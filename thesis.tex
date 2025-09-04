@@ -6,9 +6,17 @@
 \usepackage{geometry}
 \usepackage{hyperref}
 \usepackage{graphicx}
-\usepackage{lipsum} 
 
-% Formatting
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc, positioning}
+
+\tikzstyle{block} = [draw, fill=white, rectangle, 
+    minimum height=3em, minimum width=6em]
+\tikzstyle{sum} = [draw, fill=white, circle, node distance=1cm]
+\tikzstyle{input} = [coordinate]
+\tikzstyle{output} = [coordinate]
+\tikzstyle{pinstyle} = [pin edge={to-,thin,black}]
+
 \onehalfspacing
 \geometry{margin=1in}
 
@@ -22,15 +30,13 @@
 
 % Abstract
 \begin{abstract}
-\lipsum[1] 
+    SILKSONG SOON SHAW 
 \end{abstract}
 
 % Table of Contents
 \tableofcontents
 \listoffigures
-\listoftables
 
-% Chapters
 \chapter{Introduction}
 \section{Background}
     This thesis is an extension to the Volvo Truck Assembly Line problem (?); 
@@ -41,10 +47,68 @@
     
 \section{Research Problem}
 \section{Objectives}
-    I WANNA BE AN ENGINEER
-\section{Thesis Structure}
-\section{How can one visualize this problem?}
-    The UI will visualize the flow of the assembly line on two axes.
+\section{How can one intuitively visualize this problem?}
+    The UI will visualize the flow of the assembly line on two axes. One per station, and one in clockcycles.
+
+    Issues start to appearing when we start to consider how to properly communicate size in relation to time in seconds when time is measured in an arbitrary unit refered to as clockcycles.
+
+    One clockcycle is the time it takes the theoretical product to make it from one station to the next. Hence the items must be displayed in a way that conveys that some stations take longer and shorter time to complete.
+
+\section{The Algorithm}
+\subsection{The Heuristic Approach}
+
+The problem to properly order manufacturing assembly lines with as few overlaps as possible is an NP-Hard problem. 
+
+The Algorithm designed to solve this problem is a heuristic solution that will be made out of a Construction Hieuristic $(C\!H)$ that produces a starting point based on pre-defined constraints, that feeds into a Meta Heuristic $(M\!H)$ that finds a better solution starting from the output of the construction heuristic and self-improving until an acceptable result is returned. 
+\vspace{2em} 
+\begin{figure}[ht]
+    \centering
+
+\begin{tikzpicture}[>=Latex, node distance=2cm, thick]
+
+  \node[draw, minimum width=2cm, minimum height=1cm, align=center] (CH) {CH};
+  \node[draw, minimum width=2cm, minimum height=1cm, align=center, right=of CH] (MH) {MH};
+
+  \draw[->] ($(CH.west)+(-2,0)$) -- (CH.west) node[pos=0, above] {input};
+  
+  \draw[->] (CH.east) -- (MH.west) node[midway, above] {output};
+
+  \draw[->] (MH.east) -- ++(1,0) -- ++(0,1) -- ++(-2,0) -- (MH.north);      
+
+  \draw[->] (MH.east) -- ++(2,0) node[pos=1, below] {result};
+
+\end{tikzpicture}
+    \caption{Heuristic solution}
+    \label{fig:ml_solution}
+\end{figure}
+
+\subsection{Complementing the Heuristic Approach using Machine Learning}
+Due to the fact that servicemen today place products to be made manually using unwritten knowledge they have accumulated over the years.
+
+The idea is that if they have knowledge of a good enough solution from the get-go with some risk of overlap, then we can train a Deep Learning Model $(M\!L)$ on such previous data to give the algorithm a better starting point, thus reducing the runtime of that algorithm.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[>=Latex, node distance=2cm, thick]
+        \node[draw, minimum width=2cm, minimum height=1cm, align=center] (MH) {MH};
+\node[draw, minimum width=2cm, minimum height=1cm, below left=1cm and 2cm of MH] (ML) {ML};
+        \node[draw, align=center, right=of ML] (Data) {Data};
+        \node[draw, dotted, minimum width=2cm, minimum height=1cm, align=center, left=4cm of MH] (CH) {CH};
+        \draw[->] (MH.east) -- ++(1,0) -- ++(0,1) -- ++(-2,0) -- (MH.north);      
+
+        \draw[->] (MH.east) -- ++(2,0) node[pos=1, below] {result};
+
+        \draw[->] ($(ML.west)+(-2,0)$) -- (ML.west) node[pos=0, above] {input};
+
+        \draw[->] (Data.west) -- (ML.east);
+
+        \draw[->] (ML.north) |- (MH.west);
+
+    \end{tikzpicture}
+    \caption{ML solution}
+    \label{fig:ml_solution}
+\end{figure}
+
 
 \chapter{Literature Review}
 \section{Theoretical Framework}
@@ -77,7 +141,7 @@ J. Abbasi, \textit{Predictive Maintenance in Industrial Machinery using Machine 
 Master’s thesis, Luleå University of Technology, Department of Computer Science, Electrical and Space Engineering, 2021.
 \bibitem{ref2}
 A. Dupuis, C. Dadouchi, and B. Agard, 
-``A decision support system for sequencing production in the manufacturing industry,'' 
+        \textit{A decision support system for sequencing production in the manufacturing industry},
 \textit{Computers \& Industrial Engineering}, vol.~185, p.~109686, 2023. 
 doi: \href{https://doi.org/10.1016/j.cie.2023.109686}{10.1016/j.cie.2023.109686}.
 \bibitem{ref3} Author, Title, Journal, Year.
@@ -86,6 +150,5 @@ doi: \href{https://doi.org/10.1016/j.cie.2023.109686}{10.1016/j.cie.2023.109686}
 
 \appendix
 \chapter{Appendix A}
-\lipsum[2] 
-
+    bruh
 \end{document}
