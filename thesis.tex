@@ -8,7 +8,7 @@
 \usepackage{graphicx}
 
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, calc, positioning}
+\usetikzlibrary{arrows.meta, calc, positioning, patterns}
 
 \tikzstyle{block} = [draw, fill=white, rectangle, 
     minimum height=3em, minimum width=6em]
@@ -54,13 +54,87 @@
 
     One clockcycle is the time it takes the theoretical product to make it from one station to the next. Hence the items must be displayed in a way that conveys that some stations take longer and shorter time to complete.
 
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[scale=1, every node/.style={scale=0.8, inner sep=3pt}]
+
+        \foreach \y in {-1,-3,-5,-7,-9, -11} {
+            \fill[gray!20] (0,\y+0.5) rectangle (10,\y);
+        }
+
+        \draw[->] (0,0) -- (10,0) node[right]{Time};
+        \draw[->] (0,0) -- (0,-12) node[below]{Stations};
+
+        \foreach \y/\name in { -2/$s_1$, -4/$s_2$, -6/$s_3$, -8/$s_4$, -10/$s_5$ } {
+            \node[left] at (0,\y) { \name };
+        }
+        \draw[fill=white] (0.5,-9.5) rectangle (1.5,-10.5) node[midway]{I};
+
+        \draw[fill=white] (0.5,-7) rectangle (1.5,-9) node[midway]{H};
+        \draw[fill=white] (2.5,-9.25) rectangle (3.5,-10.25) node[midway]{H};
+
+        \draw[fill=white] (0.5,-5) rectangle (1.5,-6.5) node[midway]{G};
+        \draw[fill=white] (2.5,-6.5) rectangle (3.5,-8) node[midway]{G};
+        \draw[fill=white] (4.5,-8.5) rectangle (5.5,-11) node[midway]{G};
+
+        \draw[fill=white] (0.5,-3) rectangle (1.5,-4.5) node[midway]{F};
+        \draw[fill=white] (2.5,-5) rectangle (3.5,-6) node[midway]{F};
+        \draw[fill=white] (4.5,-7) rectangle (5.5,-9) node[midway]{F};
+        \draw[fill=white] (6.5,-9.25) rectangle (7.5,-10.5) node[midway]{F};
+
+        \draw[fill=white] (0.5,-0.5) rectangle (1.5,-2.5) node[midway]{E};
+        \draw[fill=white] (2.5,-2.5) rectangle (3.5,-4) node[midway]{E};
+        \draw[fill=white] (4.5,-5) rectangle (5.5,-6.5) node[midway]{E};
+        \draw[fill=white] (6.5,-7) rectangle (7.5,-8) node[midway]{E};
+        \draw[fill=white] (8.5,-8.5) rectangle (9.5,-11) node[midway]{E};
+
+        \draw[fill=white] (2.5,-0.5) rectangle (3.5,-2) node[midway]{D};
+        \draw[fill=white] (4.5,-2.5) rectangle (5.5,-4.5) node[midway]{D};
+        \draw[fill=white] (6.5,-4.5) rectangle (7.5,-6.5) node[midway]{D};
+        \draw[fill=white] (8.5,-6.5) rectangle (9.5,-8.5) node[midway]{D};
+
+        \draw[fill=white] (4.5,-0.5) rectangle (5.5,-2) node[midway]{C};
+        \draw[fill=white] (6.5,-2.5) rectangle (7.5,-4.5) node[midway]{C};
+        \draw[fill=white] (8.5,-5.25) rectangle (9.5,-6.25) node[midway]{C};
+
+        \draw[fill=white] (6.5,-0.5) rectangle (7.5,-2) node[midway]{B};
+        \draw[fill=white] (8.5,-2.5) rectangle (9.5,-4.25) node[midway]{B};
+
+        \draw[fill=white] (8.5,-0.5) rectangle (9.5,-1.75) node[midway]{A};
+
+\draw[pattern=north east lines, pattern color=black] (4.5,-8.5) rectangle (5.5,-9) node[midway]{};
+        
+\draw[pattern=north east lines, pattern color=black] (8.5,-8.5) rectangle (9.5,-9) node[midway]{};
+
+
+        % Vertical time slots with labels
+        \foreach \x/\label in {2/T-2, 4/T-1, 6/T, 8/T+1, 10/T+2} {
+            \draw[dashed] (\x,0) -- (\x,-12);
+            \node[above] at (\x-1,0.2) {\label};
+        }
+
+        \draw (10.3,-0.5) -- (10.3,-1) node[midway,right]{|---| Drift Area };
+        \draw (10.3,-1.1) -- (10.3,-2.4) node[midway,right]{|---| Station };
+
+        \draw (10.3,-8.5) -- (10.3,-9) node[midway,right]{|---| Overlaps};
+
+
+    \end{tikzpicture}
+    \caption{Assembly Line Example with Station Backgrounds}
+    \label{fig:assembly}
+\end{figure}
+
+Different products will take a differing amount of time to finish each station. Thus the difficulty in displaying it properly in a UI/UX.
+
+As pictured in figure 1.1, D is BIIIIG, so is E so overlap and stuff bruh
+
+
 \section{The Algorithm}
 \subsection{The Heuristic Approach}
 
 The problem to properly order manufacturing assembly lines with as few overlaps as possible is an NP-Hard problem. 
 
-The Algorithm designed to solve this problem is a heuristic solution that will be made out of a Construction Hieuristic $(C\!H)$ that produces a starting point based on pre-defined constraints, that feeds into a Meta Heuristic $(M\!H)$ that finds a better solution starting from the output of the construction heuristic and self-improving until an acceptable result is returned. 
-\vspace{2em} 
+% \vspace{2em} 
 \begin{figure}[ht]
     \centering
 
@@ -79,8 +153,10 @@ The Algorithm designed to solve this problem is a heuristic solution that will b
 
 \end{tikzpicture}
     \caption{Heuristic solution}
-    \label{fig:ml_solution}
+    \label{fig:solution}
 \end{figure}
+
+The Algorithm designed to solve this problem is a heuristic solution that will be made out of a Construction Hieuristic $(C\!H)$ that produces a starting point based on pre-defined constraints, that feeds into a Meta Heuristic $(M\!H)$ that finds a better solution starting from the output of the construction heuristic and self-improving until an acceptable result is returned. 
 
 \subsection{Complementing the Heuristic Approach using Machine Learning}
 Due to the fact that servicemen today place products to be made manually using unwritten knowledge they have accumulated over the years.
@@ -109,6 +185,14 @@ The idea is that if they have knowledge of a good enough solution from the get-g
     \label{fig:ml_solution}
 \end{figure}
 
+However it is worth to consider that such an approach can prove redundant or yield worse results if the problem at hand is an easy problem where many solutions can be found quickly, as opposed to a hard problem where a desired solutions may not even be found. 
+
+\chapter{State of the art analysis}
+\section{LSTM}
+
+In previous papers attempting to remedy this problem the methodology used was a Recurring Neural Network (RNN) utilizing Long Short-term Memory (LSTM) \cite{ref2} Due to the fact that we wish to emulate tacit knowledge that the servicemen use to manually place the products in a "good enough" fashion.
+
+The LSTM model is unsupervised and thus
 
 \chapter{Literature Review}
 \section{Theoretical Framework}
@@ -148,7 +232,7 @@ doi: \href{https://doi.org/10.1016/j.cie.2023.109686}{10.1016/j.cie.2023.109686}
 
 \end{thebibliography}
 
-\appendix
-\chapter{Appendix A}
-    bruh
+% \appendix
+% \chapter{Appendix A}
+%     bruh
 \end{document}
