@@ -22,13 +22,11 @@
 
 \begin{document}
 
-% Title Page
 \title{Reducing the runtime of an NP-Hard algorithm using deep learning on historical data}
 \author{Christoffer Lindkvist}
 \date{\today}
 \maketitle
 
-% Abstract
 \begin{abstract}
     SILKSONG SOON SHAW 
 \end{abstract}
@@ -39,14 +37,21 @@
 
 \chapter{Introduction}
 \section{Background}
-    This thesis is an extension to the Volvo Truck Assembly Line problem (?); 
-    Today trucks are placed manually by management workers based solely on their own knowledge, 
-    though this is not written down anywhere. 
+    This thesis is an extension to the Volvo Truck Assembly Line problem \cite{?}; 
+    Today trucks are placed manually by management workers based solely on their own tacit knowledge, 
+    thus none of those experience this is not written down anywhere. 
     The algorithm in the works will using data from Volvo help place the trucks so that there are as few overlaps as possible. 
     My idea is that the algorithm can gain a faster runtime by defaulting to "safe" combinations which are already used today.
     
 \section{Research Problem}
+The truck assemly line problem at Volvo is considered NP-Hard, and the method today to solve this problem is based entirely on unwritten knowledge. If this tacit knowledge could be emulated based on historical data we could get a better starting point and thus reduce the runtime needed for the heuristic algorithm. 
 \section{Objectives}
+The objectives of this thesis are:
+\begin{enumerate}
+    \item To design a deep learning model capable of emulating the tacit knowledge of Volvo's management workers using historical data.
+    \item To integrate the model as a preprocessing step in the existing heuristic algorithm in order to reduce its runtime.
+    \item To provide a visualization tool that intuitively illustrates the scheduling flow, highlighting overlaps and bottlenecks across stations and time.
+\end{enumerate}
 \section{How can one intuitively visualize this problem?}
 \subsection{UI/UX Problem}
     The UI will visualize the flow of the assembly line on two axes. One per station, and one in clockcycles.
@@ -127,7 +132,7 @@ from $S_n$ in the same time it takes item $m$ to make it to the same station as 
     \label{fig:assembly}
 \end{figure}
 
-Different items will take a differing amount of time to finish each station. Thus the difficulty in displaying it properly in a UI/UX. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90.
+Thus we find the difficulty in displaying it properly in a UI/UX. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90.
 
 As pictured in figure 1.1, D will take a lot of time on $S_4$ and is forced to utilize some time from $S_3$ and $S_4$, which works well in a vacuum. The problems start to arise when $E$ also has to utilize some additional time from its previous stations, causing an overlap between $D$ and $E$ at $T+2$.
 
