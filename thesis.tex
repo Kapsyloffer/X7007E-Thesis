@@ -48,11 +48,14 @@
 \section{Research Problem}
 \section{Objectives}
 \section{How can one intuitively visualize this problem?}
+\subsection{UI/UX Problem}
     The UI will visualize the flow of the assembly line on two axes. One per station, and one in clockcycles.
+    
+    One clockcycle is the time it takes the theoretical items to make it from one station to the next. Hence the items must be displayed in a way that conveys that some stations take longer and shorter time to complete.
 
-    Issues start to appearing when we start to consider how to properly communicate size in relation to time in seconds when time is measured in an arbitrary unit refered to as clockcycles.
+    Issues start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle, our arbitrary unit of time, then we can never keep our items in sync. The main issue is that if we compare the station $S_n$ and $S_m$ we'll see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $n$ might make it to the station $S_{n+2}$
+from $S_n$ in the same time it takes item $m$ to make it to the same station as $S_{m+1}$.
 
-    One clockcycle is the time it takes the theoretical product to make it from one station to the next. Hence the items must be displayed in a way that conveys that some stations take longer and shorter time to complete.
 
 \begin{figure}[ht]
     \centering
@@ -65,7 +68,7 @@
         \draw[->] (0,0) -- (10,0) node[right]{Time};
         \draw[->] (0,0) -- (0,-12) node[below]{Stations};
 
-        \foreach \y/\name in { -2/$s_1$, -4/$s_2$, -6/$s_3$, -8/$s_4$, -10/$s_5$ } {
+        \foreach \y/\name in { -2/$S_1$, -4/$S_2$, -6/$S_3$, -8/$S_4$, -10/$S_5$ } {
             \node[left] at (0,\y) { \name };
         }
         \draw[fill=white] (0.5,-9.5) rectangle (1.5,-10.5) node[midway]{I};
@@ -79,7 +82,7 @@
 
         \draw[fill=white] (0.5,-3) rectangle (1.5,-4.5) node[midway]{F};
         \draw[fill=white] (2.5,-5) rectangle (3.5,-6) node[midway]{F};
-        \draw[fill=white] (4.5,-7) rectangle (5.5,-9) node[midway]{F};
+        \draw[fill=white] (4.5,-6.5) rectangle (5.5,-9) node[midway]{F};
         \draw[fill=white] (6.5,-9.25) rectangle (7.5,-10.5) node[midway]{F};
 
         \draw[fill=white] (0.5,-0.5) rectangle (1.5,-2.5) node[midway]{E};
@@ -116,17 +119,23 @@
         \draw (10.3,-0.5) -- (10.3,-1) node[midway,right]{|---| Drift Area };
         \draw (10.3,-1.1) -- (10.3,-2.4) node[midway,right]{|---| Station };
 
-        \draw (10.3,-8.5) -- (10.3,-9) node[midway,right]{|---| Overlaps};
+        \draw (10.3,-8.5) -- (10.3,-9) node[midway,right]{|---| Overlaps between $S_4$ and $S_5$};
 
 
     \end{tikzpicture}
-    \caption{Assembly Line Example with Station Backgrounds}
+    \caption{Assembly Line Example with Uniform Station and clockcycles}
     \label{fig:assembly}
 \end{figure}
 
-Different products will take a differing amount of time to finish each station. Thus the difficulty in displaying it properly in a UI/UX.
+Different items will take a differing amount of time to finish each station. Thus the difficulty in displaying it properly in a UI/UX. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90.
 
-As pictured in figure 1.1, D is BIIIIG, so is E so overlap and stuff bruh
+As pictured in figure 1.1, D will take a lot of time on $S_4$ and is forced to utilize some time from $S_3$ and $S_4$, which works well in a vacuum. The problems start to arise when $E$ also has to utilize some additional time from its previous stations, causing an overlap between $D$ and $E$ at $T+2$.
+
+The same problem arises with $F$ and $G$ at $T$ as both items need to borrow time from the stations before and after. Thus we run into another overlap.
+
+Do note that on $T$ $E$ does not utilize the drift area which results in it sitting flush with F on the timeline, this may look good on paper but can result in overlap in practice due to the humans at the assembly line occasionally taking a bit longer than presumed. This can be resolved by moving E into the drift area at the end of $S_2$. 
+
+The same issue arises at $T+1$ where $C$ and $D$ just barely get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all time it can get on $S_4$. 
 
 
 \section{The Algorithm}
@@ -159,7 +168,7 @@ The problem to properly order manufacturing assembly lines with as few overlaps 
 The Algorithm designed to solve this problem is a heuristic solution that will be made out of a Construction Hieuristic $(C\!H)$ that produces a starting point based on pre-defined constraints, that feeds into a Meta Heuristic $(M\!H)$ that finds a better solution starting from the output of the construction heuristic and self-improving until an acceptable result is returned. 
 
 \subsection{Complementing the Heuristic Approach using Machine Learning}
-Due to the fact that servicemen today place products to be made manually using unwritten knowledge they have accumulated over the years.
+Due to the fact that servicemen today place the items manually using unwritten knowledge (tacit) that they have accumulated over the years.
 
 The idea is that if they have knowledge of a good enough solution from the get-go with some risk of overlap, then we can train a Deep Learning Model $(M\!L)$ on such previous data to give the algorithm a better starting point, thus reducing the runtime of that algorithm.
 
@@ -190,7 +199,7 @@ However it is worth to consider that such an approach can prove redundant or yie
 \chapter{State of the art analysis}
 \section{LSTM}
 
-In previous papers attempting to remedy this problem the methodology used was a Recurring Neural Network (RNN) utilizing Long Short-term Memory (LSTM) \cite{ref2} Due to the fact that we wish to emulate tacit knowledge that the servicemen use to manually place the products in a "good enough" fashion.
+In previous papers attempting to remedy this problem the methodology used was a Recurring Neural Network (RNN) utilizing Long Short-term Memory (LSTM) \cite{ref2} Due to the fact that we wish to emulate tacit knowledge that the servicemen use to manually place the items in a "good enough" fashion.
 
 The LSTM model is unsupervised and thus
 
