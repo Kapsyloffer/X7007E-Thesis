@@ -28,11 +28,11 @@
 \maketitle
 
 \begin{abstract}
-    SILKSONG SOON SHAW 
+    % SILKSONG SOON SHAW 
 \end{abstract}
 
 \tableofcontents
-\listoffigures
+% \listoffigures
 
 \chapter{Introduction}
 \section{Background}
@@ -43,7 +43,7 @@
     My idea is that the algorithm can gain a faster runtime by defaulting to "safe" combinations which are already used today.
     
 \section{Research Problem}
-The assemly line problem is considered NP-Hard, and the method today to solve this problem is based entirely on unwritten knowledge. If this tacit knowledge could be emulated based on historical data we could get a better starting point and thus reduce the runtime needed for the heuristic algorithm. 
+The assemly line problem is considered NP-Hard, and the method today to solve this problem is based entirely on tacit knowledge. If this tacit knowledge could be emulated based on historical data we could get a better starting point and thus reduce the runtime needed for the heuristic algorithm. 
 \section{Objectives}
 The objectives of this thesis are:
 \begin{enumerate}
@@ -129,18 +129,18 @@ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m
     \label{fig:assembly}
 \end{figure}
 
-Thus we find the difficulty in displaying it properly in a UI/UX. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90.
+Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90. \textit{As luck would have it, each station at Volvo are each roughly 7 minutes long}, thus we will not run into any desync problems using clockcycles on these stations.
+
+Between each station lies a buffer zone called a "drift area". A drift area in this case is the transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line, but they are also the source of most problems.
 
 As pictured in \autoref{fig:assembly}, $D$ will take a lot of time on $S_4$ and is forced to utilize time from $S_3$ and $S_5$. 
-While this works well in a vacuum, the problems start to arise when $E$ also has to utilize additional time from its neighbouring stations, causing an overlap between $D$ and $E$ at $T+2$ as they both require to use the drift area.
+While this works well in a vacuum, the problems start to arise when $E$ also has to utilize additional time from its neighbouring stations, causing an overlap between $D$ and $E$ at $T+2$ as they both require the use of the drift area. 
 
 The same problem arises with $F$ and $G$ at $T$ as both items need to borrow time from the stations before and after. Thus we run into another overlap.
 
 Do note that on $T$, $E$ does not utilize the drift area which results in it sitting flush with $F$ on the timeline, this may look good on paper but can result in overlap in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
 
 The same issue arises at $T+1$ where $C$ and $D$ just barely get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
-
-\section{Thesis Outline}
 
 \chapter{State of the art analysis}
 \section{LSTM}
