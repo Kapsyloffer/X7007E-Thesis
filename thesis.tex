@@ -145,12 +145,18 @@ The same issue arises at $T+1$ where $C$ and $D$ just barely get enough time, bu
 \chapter{State of the art analysis}
 \section{LSTM}
 
-In previous works addressing similar scheduling problems, researchers have applied Recurrent Neural Networks (RNNs), often with Long Short-Term Memory (LSTM) units, in a sequence-to-sequence (seq2seq) framework. Seq2seq models are traditionally used in language-based tasks such as machine translation or text summarization, but the same architecture can be adapted to the assembly line problem.\cite{ref2} Each item can be represented as a vector, and a day’s worth of incoming items forms an input sequence of vectors. The seq2seq model can then be trained to output a corresponding placement sequence, effectively learning to replicate the tacit knowledge of the management workers in arranging the production items to minimize overlaps.\cite{ref3} 
+In previous works addressing similar scheduling problems, researchers have applied Recurrent Neural Networks (RNNs), often with Long Short-Term Memory (LSTM) units, in a sequence-to-sequence (Seq2Seq) framework. Seq2Seq models are traditionally used in language-based tasks such as machine translation or text summarization, but the same architecture can be adapted to the assembly line problem.\cite{ref2} Each item can be represented as a vector, and a day’s worth of incoming items forms an input sequence of vectors. The Seq2Seq model can then be trained to output a corresponding placement sequence, effectively learning to replicate the tacit knowledge of the management workers in arranging the production items to minimize overlaps.\cite{ref3} 
 
 The interesting part about LSTMs is that they can selectively forget irrelevant or outdated information through their forget gate. This helps them focus on more relevant patterns in the data over time, improving their ability to model long-term dependencies. \cite{ref4}
 
-\section{Seq2Seq Models}
+\section{JSON to Vector Methodology}
+Machine learning models operate on numerical vector data rather than raw JSON structures. Given a list of JSON objects (e.g., trucks), each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical build data, we can train a sequence-to-sequence model (Seq2Seq) which will learn to map an input order of JSONs to a desired output order. 
+
+\section{Seq2Seq / Sequence to Sequence Models}
+Seq2Seq models, commonly based on encoder/decoder architectures of RNNs such as LSTMs, are designed to transform one sequence into another, hence the name. In our case, the input sequence represents the original order of JSONs, and the output sequence represents the target (reordered) sequence. This approach allows the model to learn patterns in reordering and can assist the rearrangement process for new data when the tacit knowledge is emulated.
+
 \section{Transformer-based Approaches}
+
 \section{Heurestic Scheduling Methods}
 
 \chapter{Methodology}
