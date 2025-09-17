@@ -32,7 +32,6 @@
 \end{abstract}
 
 \tableofcontents
-% \listoffigures
 
 \chapter{Introduction}
 \section{Background}
@@ -49,15 +48,11 @@ The objectives of this thesis are:
 \begin{enumerate}
     \item To design a deep learning model capable of emulating the tacit knowledge of Volvo's management workers using historical data.
     \item To integrate the model as a preprocessing step in the existing heuristic algorithm in order to reduce its runtime.
-    \item To provide a visualization tool that intuitively illustrates the scheduling flow, highlighting overlaps and bottlenecks across stations and time.
+    \item To provide a visualization tool that intuitively illustrates the scheduling flow, highlighting overlaps, borrowed time, and bottlenecks across stations and time.
 \end{enumerate}
+
 \section{Visualization of the Problem}
-\subsection{UI/UX Problem}
     The UI will visualize the flow of the assembly line on two axes. One per station, and one in clockcycles. One clockcycle is the time it takes the theoretical items to make it from one station to the next. Hence the items must be displayed in a way that conveys that some stations take longer and shorter time to complete. In \autoref{fig:assembly} this is shown by stretching the items on the stations to better fit the clock cycles. One clockcycle is defined as a rudimentary unit of time, the size is arbitrary, and it does not reflect real life. For the sake of this thesis, we'll assume that one clockcycle is the time it takes for an arbitrary item $X$ to make it from $S_n$ to $S_{n+1}$ in one clockcycle, i.e. $T$ to $T + 1$.
-
-    Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that; if we compare the station $S_n$ and $S_m$, then we'll see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$
-from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
-
 
 \begin{figure}[ht]
     \centering
@@ -111,8 +106,6 @@ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m
         
 \draw[pattern=north east lines, pattern color=black] (8.5,-8.5) rectangle (9.5,-9) node[midway]{};
 
-
-        % Vertical time slots with labels
         \foreach \x/\label in {2/T-2, 4/T-1, 6/T, 8/T+1, 10/T+2} {
             \draw[dashed] (\x,0) -- (\x,-12);
             \node[above] at (\x-1,0.2) {\label};
@@ -129,7 +122,9 @@ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m
     \label{fig:assembly}
 \end{figure}
 
-Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90. \textit{As luck would have it, each station at Volvo are each roughly 7 minutes long}, thus we will not run into any desync problems using clockcycles on these stations.
+    Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that; if we compare the station $S_n$ and $S_m$, then we'll see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
+
+Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90. \textit{As luck would have it, each station at Volvo are each roughly 7 minutes long}, thus we will not run into any major desync problems using clockcycles on these stations.
 
 Between each station lies a buffer zone called a "drift area". A drift area in this case is the transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line, but they are also the source of most problems.
 
@@ -150,21 +145,25 @@ In previous works addressing similar scheduling problems, researchers have appli
 The interesting part about LSTMs is that they can selectively forget irrelevant or outdated information through their forget gate. This helps them focus on more relevant patterns in the data over time, improving their ability to model long-term dependencies. \cite{ref4}
 
 \section{JSON to Vector Methodology}
-Machine learning models operate on numerical vector data rather than raw JSON structures. Given a list of JSON objects (e.g., trucks), each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical build data, we can train a sequence-to-sequence model (Seq2Seq) which will learn to map an input order of JSONs to a desired output order. 
+Machine learning models operate on numerical vector data rather than raw JSON structures. [?] Given a list of JSON objects, such as trucks, each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical data, we can train a sequence-to-sequence model (Seq2Seq) which will learn to map an input order of JSONs to a desired output order. 
 
 \section{Seq2Seq / Sequence to Sequence Models}
-Seq2Seq models, commonly based on encoder/decoder architectures of RNNs such as LSTMs, are designed to transform one sequence into another, hence the name. In our case, the input sequence represents the original order of JSONs, and the output sequence represents the target (reordered) sequence. This approach allows the model to learn patterns in reordering and can assist the rearrangement process for new data when the tacit knowledge is emulated.
+Seq2Seq models, commonly based on encoder/decoder architectures of RNNs such as LSTMs, are designed to transform one sequence into another, hence the name. Usually these are found in language translation models, but can be as applicable in this thesis as we want to take one sequence of items and transform it into another. In our case, the input sequence represents the original order of vectorized JSONs, and the output sequence represents the target (reordered) sequence. \cite{ref2}\cite{ref3} This approach allows the model to learn patterns in reordering and can assist the rearrangement process for new data when the tacit knowledge is emulated. 
 
 \section{Transformer-based Approaches}
 
-\section{Heurestic Scheduling Methods}
+While Seq2Seq models with LSTMs have been effective for sequence learning tasks, they suffer from limitations in handling very long sequences due to vanishing gradients and sequential processing bottlenecks. Transformer-based architectures address these shortcomings by discarding recurrence entirely and instead relying on a self-attention mechanism as an alternative to the Seq2Seq approach.
+
+The key innovation of Transformers is the use of scaled dot-product attention, extended through multi-head self-attention which allows the model to weigh the importance of each element in the sequence relative to all others, regardless of distance. This parallelized computation not only accelerates training but also enables the model to capture global dependencies more effectively than RNN-based methods. Positional encodings are added to the input vectors to retain order information, since Transformers themselves are order-agnostic.\cite{ref5} 
+
+For scheduling problems, this could translate into the ability to model complex interactions between items across the entire planning horizon. For example, the placement of one item can be directly conditioned on all others in the same day’s sequence, not only its immediate neighbours. Such encompassing context awareness can prove particularly valuable in assisting assembly line scheduling.
+
 
 \chapter{Methodology}
 \section{The Heuristic Approach}
 
-The problem to properly order manufacturing assembly lines with as few overlaps as possible is considered an NP-Hard problem. 
+The problem to properly order manufacturing assembly lines with as few overlaps as possible is considered an NP-Hard problem, as it is an optimization problem.
 
-% \vspace{2em} 
 \begin{figure}[ht]
     \centering
 
@@ -218,7 +217,7 @@ The idea is that if they have knowledge of an adequate solution from the get-go 
 However it is worth to consider that such an approach can prove redundant or yield worse results if the problem at hand is an easy problem where many solutions can be found quickly, as opposed to a hard problem where a desired solution may not even be found. 
 
 \section{System Architecture}
-
+    
 \chapter{Experiments and results}
 \section{Dataset}
 \section{Evaluation Metrics}
@@ -244,7 +243,10 @@ A. Dupuis, C. Dadouchi, and B. Agard,
 \bibitem{ref4} Ian Pointer,
 \textit{Programming PyTorch for Deep Learning},
 O'Reilly Media, 2019.
-\bibitem{ref5} Author, Title, Journal, Year.
+\bibitem{ref5} 
+A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, 
+A. N. Gomez, Ł. Kaiser, and I. Polosukhin, 
+\textit{Attention is All You Need}, Advances in Neural Information Processing Systems (NeurIPS), vol.~30, 2017.
 \bibitem{ref6} Author, Title, Journal, Year.
 \bibitem{ref7} Author, Title, Journal, Year.
 \bibitem{ref8} Author, Title, Journal, Year.
