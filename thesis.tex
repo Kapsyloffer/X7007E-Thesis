@@ -27,26 +27,25 @@
 \date{\today}
 \maketitle
 
-\begin{abstract}
-    % SILKSONG SOON SHAW 
+\begin{abstract} 
+    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads. This challenge is formalized as the Product Sequencing Problem, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can complement heuristic methods for solving this problem. Using a Sequence-to-Sequence model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to initialize a heuristic algorithm. By providing informed starting points, this approach aims to reduce the computation time of the algorithm.
 \end{abstract}
 
 \tableofcontents
 
 \chapter{Introduction}
 \section{Background}
-    This thesis is an extension to the Volvo Truck Assembly Line problem \cite{?}; 
-    Today trucks are placed manually by management workers based solely on their own tacit knowledge, 
-    thus none of those experience this is not written down anywhere. 
-    The algorithm in the works will using data from Volvo help place the trucks so that there are as few overlaps as possible. 
-    My idea is that the algorithm can gain a faster runtime by defaulting to "safe" combinations which are already used today.
-    
+This thesis addresses the Product Sequencing Problem, an NP-Hard optimization problem arising in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few overlaps, it remains ad hoc and sporadic. %ad hoc = academic for "doohickey"
+
+To improve upon this, a heuristic algorithm is proposed. The algorithm first generates a feasible baseline solution from pre-defined constraints, and then it refines the baseline until an acceptable sequence is reached. The central question of this thesis is whether the runtime of such an algorithm can be reduced by initializing it with a baseline informed by historical sequencing data, rather than relying solely on rule-based construction.
+
 \section{Research Problem}
-The assemly line problem is considered NP-Hard, and the method today to solve this problem is based entirely on tacit knowledge. If this tacit knowledge could be emulated based on historical data we could get a better starting point and thus reduce the runtime needed for the heuristic algorithm. 
+The Product Sequencing Problem is classified as NP-Hard. Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for the heuristic methods. Such informed baselines could potentially reduce the runtime required to reach high-quality solutions, especially for complex sequencing instances.
+
 \section{Objectives}
 The objectives of this thesis are:
 \begin{enumerate}
-    \item To design a deep learning model capable of emulating the tacit knowledge of Volvo's management workers using historical data.
+    \item To design a deep learning model capable of emulating the tacit knowledge of management workers using historical data.
     \item To integrate the model as a preprocessing step in the existing heuristic algorithm in order to reduce its runtime.
     \item To provide a visualization tool that intuitively illustrates the scheduling flow, highlighting overlaps, borrowed time, and bottlenecks across stations and time.
 \end{enumerate}
@@ -124,7 +123,7 @@ The objectives of this thesis are:
 
     Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that; if we compare the station $S_n$ and $S_m$, then we'll see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
 
-Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90. \textit{As luck would have it, each station at Volvo are each roughly 7 minutes long}, thus we will not run into any major desync problems using clockcycles on these stations.
+Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90. \textit{As luck would have it, each station in this specific case are each roughly 7 minutes long}, thus we will not run into any major desync problems using clockcycles on these stations.
 
 Between each station lies a buffer zone called a "drift area". A drift area in this case is the transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line, but they are also the source of most problems.
 
@@ -188,7 +187,7 @@ The problem to properly order manufacturing assembly lines with as few overlaps 
 The Algorithm designed to solve this problem is a heuristic solution that will be made out of a Construction Hieuristic $(C\!H)$ that produces a starting point based on pre-defined constraints, that feeds into a Meta Heuristic $(M\!H)$ that finds a better solution starting from the output of the construction heuristic and self-improving until an acceptable result is returned. 
 
 \section{Complementing the Heuristic Approach using Machine Learning}
-Due to the fact that servicemen today place the items manually using tacit knowledge that they have accumulated over the years. Then what this thesis proposes is to emulate that same knowledge by learning which placement patterns tend to work together and which do not.
+Due to the fact that management workers today place the items manually using tacit knowledge that they have accumulated over the years, then what this thesis proposes is to emulate that same knowledge by learning which placement patterns tend to work together and which do not.
 
 The idea is that if they have knowledge of an adequate solution from the get-go with some risk of overlap, then we can train a Deep Learning Model $(M\!L)$ on such previous data to give the algorithm a better starting point, thus (in theory) reducing the runtime of that algorithm.
 
@@ -217,7 +216,7 @@ The idea is that if they have knowledge of an adequate solution from the get-go 
 However it is worth to consider that such an approach can prove redundant or yield worse results if the problem at hand is an easy problem where many solutions can be found quickly, as opposed to a hard problem where a desired solution may not even be found. 
 
 \section{System Architecture}
-    
+  % Pytorch, We'll take historical assembly line data and feed the data into the machine learning algorithm, but to do that we must first vectorize it as ML handles vectors rather than json. Also the format for the historical data is probably json.  
 \chapter{Experiments and results}
 \section{Dataset}
 \section{Evaluation Metrics}
