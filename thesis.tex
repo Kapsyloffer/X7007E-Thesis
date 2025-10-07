@@ -51,7 +51,8 @@ The objectives of this thesis are:
 \end{enumerate}
 
 \section{Visualization of the Problem}
-    The UI will visualize the flow of the assembly line on two axes. One per station, and one in clockcycles. One clockcycle is the time it takes the theoretical items to make it from one station to the next. Hence the items must be displayed in a way that conveys that some stations take longer and shorter time to complete. In \autoref{fig:assembly} this is shown by stretching the items on the stations to better fit the clock cycles. One clockcycle is defined as a rudimentary unit of time, the size is arbitrary, and it does not reflect real life. For the sake of this thesis, we'll assume that one clockcycle is the time it takes for an arbitrary item $X$ to make it from $S_n$ to $S_{n+1}$ in one clockcycle, i.e. $T$ to $T + 1$.
+
+The user interface (UI) will visualize the flow of the assembly line along two axes: one representing stations and one representing clockcycles. A clockcycle is defined as the time required for an item to move from one station to the next. In the visualization, items are displayed in a way that reflects the relative duration of processing at each station. In \autoref{fig:assembly}, this is illustrated by stretching items along the timeline to better represent the clockcycles. Note that a clockcycle is an arbitrary unit of time and does not correspond to real-world durations. For the purpose of this thesis, one clockcycle is defined as the time it takes for an arbitrary item $X$ to move from station $S_n$ to station $S_{n+1}$.
 
 \begin{figure}[ht]
     \centering
@@ -136,6 +137,15 @@ Do note that on $T$, $E$ does not utilize the drift area which results in it sit
 
 The same issue arises at $T+1$ where $C$ and $D$ just barely get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
+\section{Jump-in and Jump-out}
+In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order remains unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}.
+
+A related challenge occurs when the missing components finally arrive. At this point, the product occupies space on the assembly station. Ideally, it should be reintegrated into the line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
+
+From an algorithmic perspective, a \emph{jump-in} can be treated as an $O(n)$ problem: one needs only to inspect the $n$ positions in a sequence of length $n$ to determine the best insertion point in the upcoming batch. Implemented correctly, a jump-in could occur as soon as the following batch. Nevertheless, depending on operational constraints, it may not be feasible in every batch.
+
+Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the line by a clock cycle, potentially causing overloads. Alternatively, the gap could be left in place, which avoids overloading but may result in lost revenue.
+
 \chapter{State of the art analysis}
 \section{LSTM}
 
@@ -216,7 +226,24 @@ The idea is that if they have knowledge of an adequate solution from the get-go 
 However it is worth to consider that such an approach can prove redundant or yield worse results if the problem at hand is an easy problem where many solutions can be found quickly, as opposed to a hard problem where a desired solution may not even be found. 
 
 \section{System Architecture}
+
+The system will be implemented using PyTorch. Historical assembly line data will serve as input to the machine learning model, but this data must first be vectorized, as most ML frameworks, including PyTorch, operate on numerical vectors rather than structured formats like JSON.
+
+The model architecture is inspired by sequence-to-sequence (Seq2Seq) models, which are commonly used in language processing tasks, such as machine translation. However, the traditional Seq2Seq architecture must be adapted to handle mixed-model sequencing rather than natural language. One challenge is that Seq2Seq models have a tendency to repeat “safe” tokens; in the context of MMAL, this could manifest as repeatedly placing the easiest product in the sequence. To address this, constraints will be added to prevent repetition and encourage diverse permutations. 
+
+Alternative architectures, such as Transformer networks or Pointer Networks, will also be explored to determine the most effective approach for sequencing tasks.  
+
+To evaluate model performance before using historical data, a set of synthetic “puzzles” will be created. These puzzles will be scrambled product sequences with known solutions, allowing the model to learn placement strategies in a controlled environment. After successful training on these synthetic sequences, the model will be tested on real historical data to assess its ability to generalize to practical assembly line scenarios.
+
+Finally, once trained, the model parameters will be stored to avoid retraining for each new sequence, ensuring the system can provide predictions efficiently during production.
+
   % Pytorch, We'll take historical assembly line data and feed the data into the machine learning algorithm, but to do that we must first vectorize it as ML handles vectors rather than json. Also the format for the historical data is probably json.  
+  % Because Seq2Seq traditionally is used for language based tasks, like translation from one language to another, the model might have to be reworked so that it can process mixed model sequencing.
+    % Pointer networks could be worth to take a look at. 
+    % When the model is trained we must find a way to store the adjusted values of the nn so that we don't have to train it each and every time. DONE!
+   %Seq2Seq is flawed in the fact that it has a habit of reusing safe tokens, in a sentence it might continously write "the" as it is a common word in english. In the case of the MMAL it instead repeats the "easiest" product, so a constraint has to be made which will effectively prevent repetition and force permutation placements. Alternatively we investigate alternative model types, such as transformer networks or pointer networks.
+   % Creating puzzlepieces - In order to find out which model that is the best before attempting with any previous data I first propose that I create a puzzle and scramble it for the machine to attempt solving. I will of course throw in the correct solutions as training data and then eventually give it some scrambled puzzles to see if it figures it out.
+
 \chapter{Experiments and results}
 \section{Dataset}
 \section{Evaluation Metrics}
