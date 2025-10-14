@@ -153,8 +153,6 @@ In previous works addressing similar scheduling problems, researchers have appli
 
 The interesting part about LSTMs is that they can selectively forget irrelevant or outdated information through their forget gate. This helps them focus on more relevant patterns in the data over time, improving their ability to model long-term dependencies. \cite{ref4}
 
-\section{JSON to Vector Methodology}
-Machine learning models operate on numerical vector data rather than raw JSON structures. [?] Given a list of JSON objects, such as trucks, each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical data, we can train a sequence-to-sequence model (Seq2Seq) which will learn to map an input order of JSONs to a desired output order. 
 
 \section{Seq2Seq / Sequence to Sequence Models}
 Seq2Seq models, commonly based on encoder/decoder architectures of RNNs such as LSTMs, are designed to transform one sequence into another, hence the name. Usually these are found in language translation models, but can be as applicable in this thesis as we want to take one sequence of items and transform it into another. In our case, the input sequence represents the original order of vectorized JSONs, and the output sequence represents the target (reordered) sequence. \cite{ref2}\cite{ref3} This approach allows the model to learn patterns in reordering and can assist the rearrangement process for new data when the tacit knowledge is emulated. 
@@ -167,6 +165,8 @@ The key innovation of Transformers is the use of scaled dot-product attention, e
 
 For scheduling problems, this could translate into the ability to model complex interactions between items across the entire planning horizon. For example, the placement of one item can be directly conditioned on all others in the same day’s sequence, not only its immediate neighbours. Such encompassing context awareness can prove particularly valuable in assisting assembly line scheduling.
 
+\section{Pointer-Networks}
+\cite{ref7}
 
 \chapter{Methodology}
 \section{The Heuristic Approach}
@@ -195,6 +195,7 @@ The problem to properly order manufacturing assembly lines with as few overlaps 
 \end{figure}
 
 The Algorithm designed to solve this problem is a heuristic solution that will be made out of a Construction Hieuristic $(C\!H)$ that produces a starting point based on pre-defined constraints, that feeds into a Meta Heuristic $(M\!H)$ that finds a better solution starting from the output of the construction heuristic and self-improving until an acceptable result is returned. 
+
 
 \section{Complementing the Heuristic Approach using Machine Learning}
 Due to the fact that management workers today place the items manually using tacit knowledge that they have accumulated over the years, then what this thesis proposes is to emulate that same knowledge by learning which placement patterns tend to work together and which do not.
@@ -225,6 +226,9 @@ The idea is that if they have knowledge of an adequate solution from the get-go 
 
 However it is worth to consider that such an approach can prove redundant or yield worse results if the problem at hand is an easy problem where many solutions can be found quickly, as opposed to a hard problem where a desired solution may not even be found. 
 
+\section{JSON to Vector Methodology}
+Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Given a list of JSON objects on an assembly line, each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical data, a model can then be trained to learn a mapping from an input order of JSONs to a desired output order.
+
 \section{System Architecture}
 
 The system will be implemented using PyTorch. Historical assembly line data will serve as input to the machine learning model, but this data must first be vectorized, as most ML frameworks, including PyTorch, operate on numerical vectors rather than structured formats like JSON.
@@ -243,6 +247,66 @@ Finally, once trained, the model parameters will be stored to avoid retraining f
     % When the model is trained we must find a way to store the adjusted values of the nn so that we don't have to train it each and every time. DONE!
    %Seq2Seq is flawed in the fact that it has a habit of reusing safe tokens, in a sentence it might continously write "the" as it is a common word in english. In the case of the MMAL it instead repeats the "easiest" product, so a constraint has to be made which will effectively prevent repetition and force permutation placements. Alternatively we investigate alternative model types, such as transformer networks or pointer networks.
    % Creating puzzlepieces - In order to find out which model that is the best before attempting with any previous data I first propose that I create a puzzle and scramble it for the machine to attempt solving. I will of course throw in the correct solutions as training data and then eventually give it some scrambled puzzles to see if it figures it out.
+
+\section{Transforming a language-based model into a sequence based model}
+
+The models examined in this thesis were originally designed for natural language processing tasks, such as translation between languages. Both sequence-to-sequence and transformer-based architectures rely on a predefined vocabulary. This raises the question of whether a list of products can be treated analogously to a collection of words where each product variation forms a distinct element within the vocabulary. Doing so could allow the model to more accurately replicate historical data, along with its flaws.
+
+However, certain constraints must be imposed as language models often overproduce common tokens such as “the,” since these words are statistically more likely to appear in most positions in any given English sentence. To avoid this bias, the model must instead operate on genuine rearrangements or permutations relevant to our specific application.
+
+\subsection{The Tokenizer}
+    As one may expect when working with models designed for language, we find that most ready-made tokenizers are made to handle words in natural sentences rather than json-data or vectorized data. One way to circumvent this hurdle is to simply flatten the JSON data so that it becomes a sequence of numerical data -- a string!
+
+\begin{figure}[ht]
+    \centering
+    \vspace{0.5cm}
+
+    \begin{tikzpicture}[
+        json/.style={inner sep=6pt, align=left, font=\ttfamily\small},
+        arrow/.style={thick, -{Stealth[length=3mm, width=2mm]}}
+    ]
+
+    \node[json] (orig) {
+    \{\\
+    \quad "id": $n$,\\
+    \quad "data": \{\\
+    \quad\quad "s1": $x$,\\
+    \quad\quad "s2": $y$,\\
+    \quad\quad ...\\
+    \quad\quad "$s_n$": $z$\\
+    \quad\}\\
+    \}\\
+    };
+
+    \node[json, right=2.5cm of orig] (flat) {
+         "id: $n$, s1: $x$, s2: $y$, \dots, $s_n$: $z$"
+    };
+
+    % Arrow
+    \draw[arrow] (orig.east) -- (flat.west);
+
+    \end{tikzpicture}
+
+    \vspace{0.5cm}
+    \caption{Pre-processing JSON data by flattening nested fields.}
+    \label{fig:flatten}
+\end{figure}
+
+\subsection{Training the Model}
+Most of the models explored in this thesis are traditionally applied to translation tasks, where the goal is to map text from one language to another. The training data in such a case might look like:
+
+\vspace{0.5cm}
+
+[sv: "Jag glömde min plånbok", en: "I forgot my wallet"]
+
+\vspace{0.5cm}
+
+Which will allow the model to learn how a sentence in the source language corresponds to one in the target language. 
+
+In our case, the challenge is different as we're not dealing with linguistic sequences or semantic transformations. Instead, our objective is to learn how to \textit{rearrange} items rather than generating new content. 
+
+If we take a look at how Large Language Models are trained, we see that they are exposed to vast amounts of text data and learn statistical relationships between tokens through iterative training. By analogy, we can train a model on large sets of structured examples to learn how to map one ordering of items to another. With appropriate constraints or loss functions to enforce rearrangement behavior, this approach provides a viable framework for our training objective.
+
 
 \chapter{Experiments and results}
 \section{Dataset}
@@ -277,19 +341,9 @@ A. N. Gomez, Ł. Kaiser, and I. Polosukhin,
 C. Fink, O. Schelén, and U. Bodin, 
 \textit{Work in progress: Decision support system for rescheduling blocked orders}, 
 Department of Computer Science, Electrical and Space Engineering, Luleå University of Technology, 2023.
-\bibitem{ref7} Author, Title, Journal, Year.
-\bibitem{ref8} Author, Title, Journal, Year.
-\bibitem{ref9} Author, Title, Journal, Year.
-\bibitem{ref10} Author, Title, Journal, Year.
-\bibitem{ref11} Author, Title, Journal, Year.
-\bibitem{ref12} Author, Title, Journal, Year.
-\bibitem{ref13} Author, Title, Journal, Year.
-\bibitem{ref14} Author, Title, Journal, Year.
-\bibitem{ref15} Author, Title, Journal, Year.
-\bibitem{ref16} Author, Title, Journal, Year.
-\bibitem{ref17} Author, Title, Journal, Year.
-\bibitem{ref18} Author, Title, Journal, Year.
-\bibitem{ref19} Author, Title, Journal, Year.
-\bibitem{ref20} Author, Title, Journal, Year.
+\bibitem{ref7} O. Vinyals, M. Fortunato, and N. Jaitly, 
+    \textit{Pointer Networks}, 
+    Department of Mathematics, University of California Berkeley, 2015.
+\bibitem{refx} Author, Title, Journal, Year.
 \end{thebibliography}
 \end{document}
