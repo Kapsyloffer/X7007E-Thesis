@@ -28,8 +28,14 @@
 \maketitle
 
 \begin{abstract} 
-    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads. This challenge is formalized as the Product Sequencing Problem, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can complement heuristic methods for solving this problem. Using a Sequence-to-Sequence model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to initialize a heuristic algorithm. By providing informed starting points, this approach aims to reduce the computation time of the algorithm.
+    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads. This challenge is formalized as the Product Sequencing Problem, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can complement heuristic methods for solving this problem. Using a deep learning model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to initialize a heuristic algorithm. By providing informed starting points, this approach aims to reduce the computation time of the algorithm.
 \end{abstract}
+
+\chapter*{Acknowledgements} % the * avoids numbering
+Funding: Vinnova grant 2023-00970 (EUREKA ITEA4 ArtWork), Vinnova grant 2023-00450 (Arrowhead fPVN, Swedish
+funding), and KDT JU grant 2023-000450 (Arrowhead fPVN,
+EU funding).
+
 
 \tableofcontents
 
@@ -159,14 +165,14 @@ Seq2Seq models, commonly based on encoder/decoder architectures of RNNs such as 
 
 \section{Transformer-based Approaches}
 
-While Seq2Seq models with LSTMs have been effective for sequence learning tasks, they suffer from limitations in handling very long sequences due to vanishing gradients and sequential processing bottlenecks. Transformer-based architectures address these shortcomings by discarding recurrence entirely and instead relying on a self-attention mechanism as an alternative to the Seq2Seq approach.
+Similarly to Seq2Seq models, Transformer models are used for Natural Language Processing as well. However, while Seq2Seq models have been effective for sequence learning tasks, they suffer from limitations in handling very long sequences due to vanishing gradients and sequential processing bottlenecks. Transformer-based architectures address these shortcomings by discarding recurrence entirely and instead relying on a self-attention mechanism as an alternative to the sequential approach.
 
 The key innovation of Transformers is the use of scaled dot-product attention, extended through multi-head self-attention which allows the model to weigh the importance of each element in the sequence relative to all others, regardless of distance. This parallelized computation not only accelerates training but also enables the model to capture global dependencies more effectively than RNN-based methods. Positional encodings are added to the input vectors to retain order information, since Transformers themselves are order-agnostic.\cite{ref5} 
 
 For scheduling problems, this could translate into the ability to model complex interactions between items across the entire planning horizon. For example, the placement of one item can be directly conditioned on all others in the same day’s sequence, not only its immediate neighbours. Such encompassing context awareness can prove particularly valuable in assisting assembly line scheduling.
 
-\section{Pointer-Networks}
-\cite{ref7}
+% \section{Pointer-Networks}
+% \cite{ref7}
 
 \chapter{Methodology}
 \section{The Heuristic Approach}
@@ -233,7 +239,7 @@ Machine learning models operate on numerical vector data, often represented as \
 
 The system will be implemented using PyTorch. Historical assembly line data will serve as input to the machine learning model, but this data must first be vectorized, as most ML frameworks, including PyTorch, operate on numerical vectors rather than structured formats like JSON.
 
-The model architecture is inspired by sequence-to-sequence (Seq2Seq) models, which are commonly used in language processing tasks, such as machine translation. However, the traditional Seq2Seq architecture must be adapted to handle mixed-model sequencing rather than natural language. One challenge is that Seq2Seq models have a tendency to repeat “safe” tokens; in the context of MMAL, this could manifest as repeatedly placing the easiest product in the sequence. To address this, constraints will be added to prevent repetition and encourage diverse permutations. 
+The model architecture is inspired by sequence-to-sequence (Seq2Seq) models, which are commonly used in language processing tasks, such as machine translation. However, the traditional Seq2Seq architecture must be adapted to handle mixed-model sequencing rather than natural language. One challenge is that Seq2Seq models have a tendency to repeat “safe” tokens; in the context of a Mixed-Model Assembly Line (MMAL), this could manifest as repeatedly placing the easiest product in the sequence. To address this, constraints will be added to prevent repetition and encourage diverse permutations.  
 
 Alternative architectures, such as Transformer networks or Pointer Networks, will also be explored to determine the most effective approach for sequencing tasks.  
 
@@ -308,14 +314,23 @@ In our case, the challenge is different as we're not dealing with linguistic seq
 If we take a look at how Large Language Models are trained, we see that they are exposed to vast amounts of text data and learn statistical relationships between tokens through iterative training. By analogy, we can train a model on large sets of structured examples to learn how to map one ordering of items to another. With appropriate constraints or loss functions to enforce rearrangement behavior, this approach provides a viable framework for our training objective.
 
 
+
 \chapter{Experiments and results}
 \section{Dataset}
+We did get an official dataset from a production run, the dataset however contained a few issues that had to be resolved.
+\subsection{Fitting the data}
+    The data we got contained everything we needed to visualize it on a timeline similar to \autoref{fig:assembly} where timeslots had to be manually offset to better fit between allocations. The algorithm to fit the alloctions was: [blablabla] with the following criteria: [blablabla]. The reason that the data needed additional processing was due to the fact that some allocations exceeded the given 700 cmin window, and needed to borrow time from neighbouring stations.
+
+    Without offsetting any timeslots roughly 2,000 overlaps were found.
+    
+    After processing the data we were left with 300. %Lies, plz fix
 \section{Evaluation Metrics}
 \section{Runtime Analysis}
 
 \chapter{Discussion}
 \section{Interpretation of Results}
 \section{Limitations}
+    As is the case in many machine learning projects the lack of data to train on led to the downfall of this project.
 \section{Future Work}
 
 
