@@ -152,6 +152,11 @@ From an algorithmic perspective, a \emph{jump-in} can be treated as an $O(n)$ pr
 
 Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the line by a clock cycle, potentially causing overloads. Alternatively, the gap could be left in place, which avoids overloading but may result in lost revenue.
 
+
+\section{Defining Overlaps}
+
+Overlaps in this case arise from timing dependencies: each item’s progress depends on how long it takes to process at its respective station. If two items are processed consecutively at station $s_n$, and both of those items require additional time from its neighbouring stations $s_{n-1}$ and $s_{n+1}$ there will not be sufficient time for all operations to complete. This results in what's visualized as an overlap. In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow these operations to complete before production may continue.
+
 \chapter{State of the art analysis}
 \section{LSTM}
 
