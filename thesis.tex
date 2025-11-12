@@ -174,7 +174,7 @@ Similarly to Seq2Seq models, Transformer models are used for Natural Language Pr
 
 The key innovation of Transformers is the use of scaled dot-product attention, extended through multi-head self-attention which allows the model to weigh the importance of each element in the sequence relative to all others, regardless of distance. This parallelized computation not only accelerates training but also enables the model to capture global dependencies more effectively than RNN-based methods. Positional encodings are added to the input vectors to retain order information, since Transformers themselves are order-agnostic.\cite{ref5} 
 
-For scheduling problems, this could translate into the ability to model complex interactions between items across the entire planning horizon. For example, the placement of one item can be directly conditioned on all others in the same day’s sequence, not only its immediate neighbours. Such encompassing context awareness can prove particularly valuable in assisting assembly line scheduling.
+For scheduling problems, this could translate into the ability to model complex interactions between items across the entire planning horizon. For example, the placement of one item can be directly conditioned on all others in the same day’s sequence, not only its immediate neighbours. Such encompassing context awareness can prove particularly valuable in assisting assembly line scheduling. \cite{ref8}
 
 % \section{Pointer-Networks}
 % \cite{ref7}
@@ -329,6 +329,12 @@ We did get an official dataset from a production run, the dataset however contai
     Without offsetting any timeslots roughly 2,000 overlaps were found.
     
     After processing the data we were left with 300. Given that this is production data which supposedly ran without any issues we can assume that something is fishy. %Lies, plz fix
+
+\subsection{Custom Loss Function}
+In the training loop used for this thesis a custom loss function was used that penalized overlaps. In the first attempts of training using 10 epochs, we reduced the number of overlaps in our shuffled dataset by roughly $20 percent$ before processing. What I did wrong was having it train on offsets as well rather than just the size of the data, as the offsets would need to be recalculated after predicting as they would else not properly align to their new locations. Thus we need to incorporate the recalculation of offsets into the training loop in order to properly spot and punish violations such as overdrafts and overlaps.
+
+
+
 \section{Evaluation Metrics}
 \section{Runtime Analysis}
 
@@ -350,8 +356,8 @@ A. Dupuis, C. Dadouchi, and B. Agard,
 \bibitem{ref3} J. Lindén, 
     \textit{Understand and Utilise Unformatted Text Documents by Natural Language Processing Algorithms}, 
     Master’s thesis, Mid Sweden University, Department of Information and Communication Systems (IST), Spring 2017.
-\bibitem{ref4} Ian Pointer,
-\textit{Programming PyTorch for Deep Learning},
+\bibitem{ref4} I. Pointer,
+\textit{Programming PyTorch for Deep Learning, ISBN: I pointer deep learning},
 O'Reilly Media, 2019.
 \bibitem{ref5} 
 A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, 
@@ -364,6 +370,8 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref7} O. Vinyals, M. Fortunato, and N. Jaitly, 
     \textit{Pointer Networks}, 
     Department of Mathematics, University of California Berkeley, 2015.
+\bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann,
+    \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
 \bibitem{refx} Author, Title, Journal, Year.
 \end{thebibliography}
 \end{document}
