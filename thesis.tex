@@ -28,10 +28,10 @@
 \maketitle
 
 \begin{abstract} 
-    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads. This challenge is formalized as the Product Sequencing Problem, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can complement heuristic methods for solving this problem. Using a deep learning model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to initialize a heuristic algorithm. By providing informed starting points, this approach aims to reduce the computation time of the algorithm.
+    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across the workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads which requires halting the entire assemblyline to remedy the issues. This challenge is formalized as \textit{the Product Sequencing Problem}, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can complement heuristic methods for solving this problem. Using a Transformer model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to initialize a heuristic algorithm. By providing informed starting points, this approach aims to reduce the computation time of the algorithm.
 \end{abstract}
 
-\chapter*{Acknowledgements} % the * avoids numbering
+\chapter*{Acknowledgements} 
 Funding: Vinnova grant 2023-00970 (EUREKA ITEA4 ArtWork), Vinnova grant 2023-00450 (Arrowhead fPVN, Swedish
 funding), and KDT JU grant 2023-000450 (Arrowhead fPVN,
 EU funding).
@@ -46,7 +46,7 @@ This thesis addresses the Product Sequencing Problem, an NP-Hard optimization pr
 To improve upon this, a heuristic algorithm is proposed. The algorithm first generates a feasible baseline solution from pre-defined constraints, and then it refines the baseline until an acceptable sequence is reached. The central question of this thesis is whether the runtime of such an algorithm can be reduced by initializing it with a baseline informed by historical sequencing data, rather than relying solely on rule-based construction.
 
 \section{Research Problem}
-The Product Sequencing Problem is classified as NP-Hard. Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for the heuristic methods. Such informed baselines could potentially reduce the runtime required to reach high-quality solutions, especially for complex sequencing instances.
+Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for the heuristic methods. Such informed baselines could potentially reduce the runtime required to reach high-quality solutions, especially for complex sequencing instances.
 
 \section{Objectives}
 The objectives of this thesis are:
@@ -318,6 +318,29 @@ In our case, the challenge is different as we're not dealing with linguistic seq
 
 If we take a look at how Large Language Models are trained, we see that they are exposed to vast amounts of text data and learn statistical relationships between tokens through iterative training. By analogy, we can train a model on large sets of structured examples to learn how to map one ordering of items to another. With appropriate constraints or loss functions to enforce rearrangement behavior, this approach provides a viable framework for our training objective.
 
+\subsection{The Training Loop}
+
+\begin{figure}[ht]
+    \centering
+
+\begin{tikzpicture}[>=Latex, node distance=1cm, thick]
+
+        \node[draw, minimum width=2cm, minimum height=1cm, align=center] (Prediction) {Prediction};
+        \node[draw, minimum width=2cm, minimum height=1cm, align=center, below right=of Prediction] (Loss) {Loss};
+        \node[draw, minimum width=2cm, minimum height=1cm, align=center, below left=of Loss] (Adjust) {Adjust};
+        \node[draw, minimum width=2cm, minimum height=1cm, align=center, above left=of Adjust] (Training) {Training};
+
+        \draw[->] (Prediction.east) -| (Loss.north);
+        \draw[->] (Loss.south) |- (Adjust.east);
+        \draw[->] (Adjust.west) -| (Training.south);
+        \draw[->] (Training.north) |- (Prediction.west);
+
+
+\end{tikzpicture}
+    \caption{Training Loop}
+    \label{fig:solution}
+\end{figure}
+
 
 
 \chapter{Experiments and results}
@@ -375,3 +398,6 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{refx} Author, Title, Journal, Year.
 \end{thebibliography}
 \end{document}
+
+
+%TODO: Fler modeller, typ 2st till, Transformer, RNN, PointerNetwork
