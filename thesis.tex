@@ -22,7 +22,7 @@
 
 \begin{document}
 
-\title{Reducing the runtime of an NP-Hard algorithm using deep learning on historical data}
+\title{Applying Machine Learning on Sequential Data}
 \author{Christoffer Lindkvist}
 \date{\today}
 \maketitle
@@ -41,24 +41,27 @@ EU funding).
 
 \chapter{Introduction}
 \section{Background}
-This thesis addresses the Product Sequencing Problem, an NP-Hard optimization problem arising in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few overlaps, it remains ad hoc and sporadic. %ad hoc = academic for "doohickey"
+This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. %ad hoc = academic for "doohickey"
 
-To improve upon this, a heuristic algorithm is proposed. The algorithm first generates a feasible baseline solution from pre-defined constraints, and then it refines the baseline until an acceptable sequence is reached. The central question of this thesis is whether the runtime of such an algorithm can be reduced by initializing it with a baseline informed by historical sequencing data, rather than relying solely on rule-based construction.
+To improve upon this, a heuristic algorithm has been proposed. The algorithm first generates a feasible baseline solution from pre-defined constraints, and then it refines the baseline until an acceptable sequence is reached. The central question of this thesis is whether the runtime of such an algorithm can be reduced by initializing it with a baseline informed by historical sequencing data, rather than relying solely on rule-based object placements. The baseline in question will be generated using a deep-learning model. 
 
 \section{Research Problem}
-Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for the heuristic methods. Such informed baselines could potentially reduce the runtime required to reach high-quality solutions, especially for complex sequencing instances.
+Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given heuristic method. Such informed baselines could potentially reduce the runtime required to reach high-quality solutions, especially for complex sequencing instances. 
 
 \section{Objectives}
 The objectives of this thesis are:
 \begin{enumerate}
     \item To design a deep learning model capable of emulating the tacit knowledge of management workers using historical data.
+    \item To investigate which model performs the best in the given task of permuting input data to an acceptable solution.
     \item To integrate the model as a preprocessing step in the existing heuristic algorithm in order to reduce its runtime.
     \item To provide a visualization tool that intuitively illustrates the scheduling flow, highlighting overlaps, borrowed time, and bottlenecks across stations and time.
 \end{enumerate}
 
 \section{Visualization of the Problem}
 
-The user interface (UI) will visualize the flow of the assembly line along two axes: one representing stations and one representing clockcycles. A clockcycle is defined as the time required for an item to move from one station to the next. In the visualization, items are displayed in a way that reflects the relative duration of processing at each station. In \autoref{fig:assembly}, this is illustrated by stretching items along the timeline to better represent the clockcycles. Note that a clockcycle is an arbitrary unit of time and does not correspond to real-world durations. For the purpose of this thesis, one clockcycle is defined as the time it takes for an arbitrary item $X$ to move from station $S_n$ to station $S_{n+1}$.
+The user interface (UI) will visualize the flow of the assembly line along two axes: one representing stations and one representing clockcycles. A clockcycle is defined as the time required for an item to move from one station to the next. In the visualization, items are displayed in a way that reflects the relative duration of processing at each station. In \autoref{fig:assembly}, this is illustrated by stretching items along the timeline to better represent the clockcycles. Note that a clockcycle is an arbitrary unit of time and does not correspond to real-world durations. For the purpose of this thesis, one clockcycle is defined as the time it takes for an arbitrary item $X$ to move from station $S_n$ to station $S_{n+1}$. 
+
+Each entry, whose size represents the time it needs to complete its cycle, may borrow time from a previous or upcoming station, this is refered to as the \textit{"drift area"}. Unfortunately, this is where the problems related to the Mixed-Model Assembly Lines start to arise. If time-intensive items are placed consecutively, we will experience an overlap, as the time-allocations will not fit given the constraints of the station and drift areas.
 
 \begin{figure}[ht]
     \centering
@@ -130,18 +133,18 @@ The user interface (UI) will visualize the flow of the assembly line along two a
 
     Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that; if we compare the station $S_n$ and $S_m$, then we'll see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
 
-Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 20 seconds long in real life, while $S_3$ could be 90. \textit{As luck would have it, each station in this specific case are each roughly 7 minutes long}, thus we will not run into any major desync problems using clockcycles on these stations.
+Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 200 seconds long in real life, while $S_3$ could be 300. \textit{As luck would have it, each station in this specific case are each roughly 7 minutes long, 700cmin}, thus we will not run into any major desync problems using clockcycles on these stations.
 
-Between each station lies a buffer zone called a "drift area". A drift area in this case is the transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line, but they are also the source of most problems.
+Between each station lies a buffer zone refered to a "drift area". A drift area in this case is a transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line, but these conveniences which at first glance makes this problem easier are also the source of problems that may ensue in production.
 
 As pictured in \autoref{fig:assembly}, $D$ will take a lot of time on $S_4$ and is forced to utilize time from $S_3$ and $S_5$. 
 While this works well in a vacuum, the problems start to arise when $E$ also has to utilize additional time from its neighbouring stations, causing an overlap between $D$ and $E$ at $T+2$ as they both require the use of the drift area. 
 
-The same problem arises with $F$ and $G$ at $T$ as both items need to borrow time from the stations before and after. Thus we run into another overlap.
+The same problem can be seen at $T$ with $F$ and $G$ as both items need to borrow time from the stations before and after. Thus we run into an overlap, as the items \textit{cannot} fit.
 
 Do note that on $T$, $E$ does not utilize the drift area which results in it sitting flush with $F$ on the timeline, this may look good on paper but can result in overlap in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
 
-The same issue arises at $T+1$ where $C$ and $D$ just barely get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
+The same issue derives at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
 \section{Jump-in and Jump-out}
 In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order remains unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}.
@@ -158,26 +161,40 @@ Jump-out, on the other hand, can be considered an $O(1)$ problem, though it pres
 Overlaps in this case arise from timing dependencies: each item’s progress depends on how long it takes to process at its respective station. If two items are processed consecutively at station $s_n$, and both of those items require additional time from its neighbouring stations $s_{n-1}$ and $s_{n+1}$ there will not be sufficient time for all operations to complete. This results in what's visualized as an overlap. In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow these operations to complete before production may continue.
 
 \chapter{State of the art analysis}
+
+In this analysis I examine several deep-learning models with respect to their ability to perform permutation-based tasks, and evaluate whether training these networks on tensors with the shape...
+
+\[
+\texttt{[batch\_size, stations, 2]}
+\]
+
+...can yield desired outcomes. Due to the fact that the majority of these model architectures originate from Natural Language Processing, the recurring challenge will be their tendency to genereate repeat tokens rather than producing proper permutations of the input sequence. This issue can be mitigated through the usage of penalty-functions in training, and input masking dependent on previously predicted tokens.
+
+Permutation-based prediction tasks introduce constraints that standard Natural Language Processing architectures are not explicitly designed to handle. The central mismatch lies in the use of a fixed vocabulary. Typical NLP models operate by mapping inputs and outputs to discrete token indices drawn from a predefined vocabulary, which suits language modelling but not tasks where the output must be a one-to-one transformation of the input sequence. In permutation problems, each output element should refer directly to an input element rather than to a token from a learned vocabulary, effectively removing the need for a vocabulary altogether. This distinction highlights why conventional sequence models struggle with such tasks without previously mentioned mechanisms such as masking or pointer-based attention.
+
+
 \section{LSTM}
 
 In previous works addressing similar scheduling problems, researchers have applied Recurrent Neural Networks (RNNs), often with Long Short-Term Memory (LSTM) units, in a sequence-to-sequence (Seq2Seq) framework. Seq2Seq models are traditionally used in language-based tasks such as machine translation or text summarization, but the same architecture can be adapted to the assembly line problem.\cite{ref2} Each item can be represented as a vector, and a day’s worth of incoming items forms an input sequence of vectors. The Seq2Seq model can then be trained to output a corresponding placement sequence, effectively learning to replicate the tacit knowledge of the management workers in arranging the production items to minimize overlaps.\cite{ref3} 
 
 The interesting part about LSTMs is that they can selectively forget irrelevant or outdated information through their forget gate. This helps them focus on more relevant patterns in the data over time, improving their ability to model long-term dependencies. \cite{ref4}
 
+Despite its age LSTM models are still in use today, and a common issue in LSTM-based models is that each entry is handled one-by-one in sequence, rather than in parallel, which increases the training time, and performance in general. This problem is addressed in the creation of the Transformer model, using an Attention mechanism which handles the sequence in parallel, and can differentiate words based on their position in sentences.
+
 
 \section{Seq2Seq / Sequence to Sequence Models}
-Seq2Seq models, commonly based on encoder/decoder architectures of RNNs such as LSTMs, are designed to transform one sequence into another, hence the name. Usually these are found in language translation models, but can be as applicable in this thesis as we want to take one sequence of items and transform it into another. In our case, the input sequence represents the original order of vectorized JSONs, and the output sequence represents the target (reordered) sequence. \cite{ref2}\cite{ref3} This approach allows the model to learn patterns in reordering and can assist the rearrangement process for new data when the tacit knowledge is emulated. 
+Seq2Seq models, commonly based on encoder/decoder architectures of RNNs such as LSTMs, are designed to transform one sequence into another using a prebaked vocabulary, hence the name. Usually these are found in language translation models, but can be as applicable in this thesis as we want to take one sequence of items and transform it into another. In our case, the input sequence represents the original order of vectorized JSONs, and the output sequence represents the target (reordered) sequence. However it may prove tricky to dynamically define a vocabulary from input data unless it solely looks at the sequence number. \cite{ref2}\cite{ref3} This approach allows the model to learn patterns in reordering and can assist the rearrangement process for new data when the tacit knowledge is emulated. 
 
 \section{Transformer-based Approaches}
 
 Similarly to Seq2Seq models, Transformer models are used for Natural Language Processing as well. However, while Seq2Seq models have been effective for sequence learning tasks, they suffer from limitations in handling very long sequences due to vanishing gradients and sequential processing bottlenecks. Transformer-based architectures address these shortcomings by discarding recurrence entirely and instead relying on a self-attention mechanism as an alternative to the sequential approach.
 
-The key innovation of Transformers is the use of scaled dot-product attention, extended through multi-head self-attention which allows the model to weigh the importance of each element in the sequence relative to all others, regardless of distance. This parallelized computation not only accelerates training but also enables the model to capture global dependencies more effectively than RNN-based methods. Positional encodings are added to the input vectors to retain order information, since Transformers themselves are order-agnostic.\cite{ref5} 
+The defining characteristic of the Transformer model is the use of scaled dot-product attention, extended through multi-head self-attention which allows the model to weigh the importance of each element in a given sequence relative to all others elements in that same sequence, regardless of distance. This parallelized computation not only accelerates training but also enables the model to capture global dependencies more effectively than RNN-based methods. Positional encodings are added to the input vectors to retain order information, since Transformers themselves are order-agnostic.\cite{ref5} 
 
 For scheduling problems, this could translate into the ability to model complex interactions between items across the entire planning horizon. For example, the placement of one item can be directly conditioned on all others in the same day’s sequence, not only its immediate neighbours. Such encompassing context awareness can prove particularly valuable in assisting assembly line scheduling. \cite{ref8}
 
-% \section{Pointer-Networks}
-% \cite{ref7}
+\section{Pointer Networks}
+Pointer Networks is the only model in this analysis which are specifically designed for assisting in combinatorial optimization problems, and sequence permutations. Encoding and Decoding is made using an LSTM architecture, similar to the Seq2Seq model, but with an Attention-mechanism similar to the Transformer network. The attention mechanism allows the model to generate context vectors that point to specific elements from an input sequence, hence the name. By explicitly selecting elements from a fixed vocabulary rather than generating tokens, the Pointer Network runs a lower risk of repeating tokens which otherwise prove a tricky problem to mitigate for the other models listed above. \cite{ref7}
 
 \chapter{Methodology}
 \section{The Heuristic Approach}
@@ -342,7 +359,6 @@ If we take a look at how Large Language Models are trained, we see that they are
 \end{figure}
 
 
-
 \chapter{Experiments and results}
 \section{Dataset}
 We did get an official dataset from a production run, the dataset however contained a few issues that had to be resolved.
@@ -400,4 +416,4 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \end{document}
 
 
-%TODO: Fler modeller, typ 2st till, Transformer, RNN, PointerNetwork
+%TODO: Fler modeller, typ 2st till, Transformer, Seq2Seq, PointerNetwork
