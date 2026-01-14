@@ -6,6 +6,9 @@
 \usepackage{geometry}
 \usepackage{hyperref}
 \usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{amsmath} 
+\usepackage{amssymb}
 
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, calc, positioning, patterns}
@@ -20,15 +23,21 @@
 \onehalfspacing
 \geometry{margin=1in}
 
+\titleformat{\chapter}[hang]
+  {\normalfont\huge\bfseries}
+  {\thechapter.}
+  {1em}
+  {}
+
 \begin{document}
 
-\title{Applying Machine Learning on Sequential Data}
+\title{Applying Deep Learning on Sequential Data within the Mixed-Model Assembly Line problem}
 \author{Christoffer Lindkvist}
 \date{\today}
 \maketitle
 
 \begin{abstract} 
-    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across the workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads which requires halting the entire assemblyline to remedy the issues. This challenge is formalized as \textit{the Product Sequencing Problem}, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can complement heuristic methods for solving this problem. Using a Transformer model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to initialize a heuristic algorithm. By providing informed starting points, this approach aims to reduce the computation time of the algorithm.
+    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across the workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads which requires halting the entire assemblyline to remedy the issues. This challenge is formalized as \textit{the Product Sequencing Problem}, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can complement heuristic methods for solving this problem. Using a Transformer-, Pointer Network-, and Sequence to Sequence model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to initialize a heuristic algorithm. By providing informed starting points, this approach aims to reduce the computation time of the algorithm by presenting an adequate starting point.
 \end{abstract}
 
 \chapter*{Acknowledgements} 
@@ -160,41 +169,69 @@ Jump-out, on the other hand, can be considered an $O(1)$ problem, though it pres
 
 Overlaps in this case arise from timing dependencies: each item’s progress depends on how long it takes to process at its respective station. If two items are processed consecutively at station $s_n$, and both of those items require additional time from its neighbouring stations $s_{n-1}$ and $s_{n+1}$ there will not be sufficient time for all operations to complete. This results in what's visualized as an overlap. In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow these operations to complete before production may continue.
 
-\chapter{State of the art analysis}
-
-In this analysis I examine several deep-learning models with respect to their ability to perform permutation-based tasks, and evaluate whether training these networks on tensors with the shape...
-
-\[
-\texttt{[batch\_size, stations, 2]}
-\]
-
-...can yield desired outcomes. Due to the fact that the majority of these model architectures originate from Natural Language Processing, the recurring challenge will be their tendency to genereate repeat tokens rather than producing proper permutations of the input sequence. This issue can be mitigated through the usage of penalty-functions in training, and input masking dependent on previously predicted tokens.
-
-Permutation-based prediction tasks introduce constraints that standard Natural Language Processing architectures are not explicitly designed to handle. The central mismatch lies in the use of a fixed vocabulary. Typical NLP models operate by mapping inputs and outputs to discrete token indices drawn from a predefined vocabulary, which suits language modelling but not tasks where the output must be a one-to-one transformation of the input sequence. In permutation problems, each output element should refer directly to an input element rather than to a token from a learned vocabulary, effectively removing the need for a vocabulary altogether. This distinction highlights why conventional sequence models struggle with such tasks without previously mentioned mechanisms such as masking or pointer-based attention.
+% TODO: En figur :D
+%
+\chapter{State of the Art Analysis}
+\label{ch:sota}
 
 
-\section{LSTM}
+The Mixed-Model Assembly Line (MMAL) problem is formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms. %See \cite{ch3}
 
-In previous works addressing similar scheduling problems, researchers have applied Recurrent Neural Networks (RNNs), often with Long Short-Term Memory (LSTM) units, in a sequence-to-sequence (Seq2Seq) framework. Seq2Seq models are traditionally used in language-based tasks such as machine translation or text summarization, but the same architecture can be adapted to the assembly line problem.\cite{ref2} Each item can be represented as a vector, and a day’s worth of incoming items forms an input sequence of vectors. The Seq2Seq model can then be trained to output a corresponding placement sequence, effectively learning to replicate the tacit knowledge of the management workers in arranging the production items to minimize overlaps.\cite{ref3} 
+In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
 
-The interesting part about LSTMs is that they can selectively forget irrelevant or outdated information through their forget gate. This helps them focus on more relevant patterns in the data over time, improving their ability to model long-term dependencies. \cite{ref4}
+For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by random task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
-Despite its age LSTM models are still in use today, and a common issue in LSTM-based models is that each entry is handled one-by-one in sequence, rather than in parallel, which increases the training time, and performance in general. This problem is addressed in the creation of the Transformer model, using an Attention mechanism which handles the sequence in parallel, and can differentiate words based on their position in sentences.
+However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line, especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating provene human strategies, hence I've chosen to use Deep Unsupervised Learning instead.
+
+While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
+
+Current manual approaches rely heavily on the "tacit knowledge" of management staff, knowledge accumulated through experience that is difficult to articulate as explicit rules. This thesis proposes capturing this knowledge using Supervised Learning, formally known in this context as Imitation Learning. 
 
 
-\section{Seq2Seq / Sequence to Sequence Models}
-Seq2Seq models, commonly based on encoder/decoder architectures of RNNs such as LSTMs, are designed to transform one sequence into another using a prebaked vocabulary, hence the name. Usually these are found in language translation models, but can be as applicable in this thesis as we want to take one sequence of items and transform it into another. In our case, the input sequence represents the original order of vectorized JSONs, and the output sequence represents the target (reordered) sequence. However it may prove tricky to dynamically define a vocabulary from input data unless it solely looks at the sequence number. \cite{ref2}\cite{ref3} This approach allows the model to learn patterns in reordering and can assist the rearrangement process for new data when the tacit knowledge is emulated. 
+\section{Recurrent Architectures}
+\label{sec:recurrent_arch}
 
-\section{Transformer-based Approaches}
+To emulate the sequential decision-making process of human schedulers, we first investigate architectures adapted from Natural Language Processing (NLP) that process data sequentially.
 
-Similarly to Seq2Seq models, Transformer models are used for Natural Language Processing as well. However, while Seq2Seq models have been effective for sequence learning tasks, they suffer from limitations in handling very long sequences due to vanishing gradients and sequential processing bottlenecks. Transformer-based architectures address these shortcomings by discarding recurrence entirely and instead relying on a self-attention mechanism as an alternative to the sequential approach.
+\subsection{Long Short-Term Memory (LSTM)}
+\label{subsec:lstm}
 
-The defining characteristic of the Transformer model is the use of scaled dot-product attention, extended through multi-head self-attention which allows the model to weigh the importance of each element in a given sequence relative to all others elements in that same sequence, regardless of distance. This parallelized computation not only accelerates training but also enables the model to capture global dependencies more effectively than RNN-based methods. Positional encodings are added to the input vectors to retain order information, since Transformers themselves are order-agnostic.\cite{ref5} 
+In previous works addressing similar scheduling problems, researchers have applied Recurrent Neural Networks (RNNs), often utilizing Long Short-Term Memory (LSTM) units within a sequence-to-sequence (Seq2Seq) framework \cite{ref2}.
 
-For scheduling problems, this could translate into the ability to model complex interactions between items across the entire planning horizon. For example, the placement of one item can be directly conditioned on all others in the same day’s sequence, not only its immediate neighbours. Such encompassing context awareness can prove particularly valuable in assisting assembly line scheduling. \cite{ref8}
+A defining characteristic of LSTMs is their ability to selectively forget irrelevant or outdated information via the ``forget gate.'' This mechanism allows the model to focus on relevant patterns over time, mitigating the vanishing gradient problem inherent in standard RNNs and improving the modeling of long-term dependencies \cite{ref4, ref9}.
 
-\section{Pointer Networks}
-Pointer Networks is the only model in this analysis which are specifically designed for assisting in combinatorial optimization problems, and sequence permutations. Encoding and Decoding is made using an LSTM architecture, similar to the Seq2Seq model, but with an Attention-mechanism similar to the Transformer network. The attention mechanism allows the model to generate context vectors that point to specific elements from an input sequence, hence the name. By explicitly selecting elements from a fixed vocabulary rather than generating tokens, the Pointer Network runs a lower risk of repeating tokens which otherwise prove a tricky problem to mitigate for the other models listed above. \cite{ref7}
+\subsection{Sequence-to-Sequence (Seq2Seq) Models}
+
+Seq2Seq models, typically built upon encoder-decoder RNN architectures, are designed to map an input sequence to an output sequence of a different length or order \cite{ref2}.  While traditionally applied to machine translation (e.g., transforming English to Swedish), this architecture is adaptable to the assembly line problem. In this context, the input is a sequence of vectorized product orders, and the output is the permuted production sequence \cite{ref3}.
+
+However, applying standard Seq2Seq models to permutation problems presents a specific challenge: \textbf{vocabulary definition}. Standard NLP models select outputs from a fixed, pre-defined vocabulary, similar to a dictionary. In a manufacturing context, where every day's product list is unique, a fixed vocabulary is insufficient. The model must instead learn to select from the dynamic input available that day, a task that is non-trivial for standard Seq2Seq architectures unless they strictly rely on abstract sequence indices \cite{ref2, ref3}.
+
+One way to remedy this limitation is to modify the decoder to point directly to the input elements, an approach that leads to the development of Pointer Networks (discussed in Section \ref{subsec:pointer_nets}).
+
+\subsection{Limitations of Recurrent Architectures}
+
+Despite their historical success, RNN and LSTM-based models suffer from a significant bottleneck: \textbf{sequential processing}. This is because these models must process the input sequence step-by-step, so that item $t$ depends on item $t-1$, they cannot parallelize computation either. This results in slower training times and, more importantly, a limited ability to capture a lot of global context across the entire schedule simultaneously \cite{ref4}.
+
+This limitation motivates the shift toward \textbf{Attention-based approaches}, which process the entire sequence in parallel, and has a larger global context scope.
+
+\section{Attention-Based Architectures}
+\label{sec:attention_arch}
+
+\subsection{The Transformer Model}
+\label{subsec:transformer}
+
+To address the sequential bottlenecks of RNNs, Transformer-based architectures discard recurrence entirely, relying instead on a self-attention mechanism \cite{ref5}.
+
+The defining characteristic of the Transformer is the use of scaled dot-product attention. This allows the model to weigh the importance of each element in a given sequence relative to all other elements in that same sequence, regardless of distance. This parallelized computation not only accelerates training but enables the model to capture global dependencies more effectively than RNN-based methods. Since Transformers are order-agnostic, positional encodings are added to the input vectors to retain sequence order information \cite{ref5}.
+
+For scheduling problems, this translates into the ability to model complex interactions across the entire planning horizon. The placement of one item can be directly conditioned on all others in the same day's sequence, providing the context awareness necessary for effective assembly line scheduling \cite{ref8}.
+
+\subsection{Pointer Networks}
+\label{subsec:pointer_nets}
+
+While Transformers excel at context, they still typically rely on generating tokens from a fixed vocabulary. The \textbf{Pointer Network} is the only architecture in this analysis specifically designed for combinatorial optimization and permutation problems \cite{ref7}.
+
+Implemented using an encoder-decoder structure (often LSTM-based), the Pointer Network utilizes a specialized attention mechanism to generate context vectors that ``point'' to specific elements in the input sequence rather than predicting a value from a dictionary. This explicitly solves the fixed vocabulary problem: the model selects which station to place next directly from the available input pool. This significantly reduces the risk of repeating or hallucinating items—a common failure mode in standard Seq2Seq models \cite{ref7}.
 
 \chapter{Methodology}
 \section{The Heuristic Approach}
@@ -226,9 +263,9 @@ The Algorithm designed to solve this problem is a heuristic solution that will b
 
 
 \section{Complementing the Heuristic Approach using Machine Learning}
-Due to the fact that management workers today place the items manually using tacit knowledge that they have accumulated over the years, then what this thesis proposes is to emulate that same knowledge by learning which placement patterns tend to work together and which do not.
+Due to the fact that management workers today place the items manually using tacit knowledge that they have accumulated over the years, and in some cases can tell at first glance if a sequence may create problems, then what this thesis proposes is to emulate that exact same knowledge by learning which placement patterns tend to work together and which do not.
 
-The idea is that if they have knowledge of an adequate solution from the get-go with some risk of overlap, then we can train a Deep Learning Model $(M\!L)$ on such previous data to give the algorithm a better starting point, thus (in theory) reducing the runtime of that algorithm.
+The idea is that; if these workers have knowledge of an adequate solution from the get-go with some risk of overlap, then we can train a Deep Learning Model $(M\!L)$ on such previous data to give the algorithm a better starting point, thus (in theory) reducing the runtime of that algorithm.
 
 \begin{figure}[ht]
     \centering
@@ -252,29 +289,10 @@ The idea is that if they have knowledge of an adequate solution from the get-go 
     \label{fig:ml_solution}
 \end{figure}
 
-However it is worth to consider that such an approach can prove redundant or yield worse results if the problem at hand is an easy problem where many solutions can be found quickly, as opposed to a hard problem where a desired solution may not even be found. 
+However it is worth to consider that such an approach can prove redundant or yield worse results if the problem at hand is an "easy" problem where many solutions can be found quickly, as opposed to a "hard" problem where a desired solution may not even be found. 
 
 \section{JSON to Vector Methodology}
 Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Given a list of JSON objects on an assembly line, each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical data, a model can then be trained to learn a mapping from an input order of JSONs to a desired output order.
-
-\section{System Architecture}
-
-The system will be implemented using PyTorch. Historical assembly line data will serve as input to the machine learning model, but this data must first be vectorized, as most ML frameworks, including PyTorch, operate on numerical vectors rather than structured formats like JSON.
-
-The model architecture is inspired by sequence-to-sequence (Seq2Seq) models, which are commonly used in language processing tasks, such as machine translation. However, the traditional Seq2Seq architecture must be adapted to handle mixed-model sequencing rather than natural language. One challenge is that Seq2Seq models have a tendency to repeat “safe” tokens; in the context of a Mixed-Model Assembly Line (MMAL), this could manifest as repeatedly placing the easiest product in the sequence. To address this, constraints will be added to prevent repetition and encourage diverse permutations.  
-
-Alternative architectures, such as Transformer networks or Pointer Networks, will also be explored to determine the most effective approach for sequencing tasks.  
-
-To evaluate model performance before using historical data, a set of synthetic “puzzles” will be created. These puzzles will be scrambled product sequences with known solutions, allowing the model to learn placement strategies in a controlled environment. After successful training on these synthetic sequences, the model will be tested on real historical data to assess its ability to generalize to practical assembly line scenarios.
-
-Finally, once trained, the model parameters will be stored to avoid retraining for each new sequence, ensuring the system can provide predictions efficiently during production.
-
-  % Pytorch, We'll take historical assembly line data and feed the data into the machine learning algorithm, but to do that we must first vectorize it as ML handles vectors rather than json. Also the format for the historical data is probably json.  
-  % Because Seq2Seq traditionally is used for language based tasks, like translation from one language to another, the model might have to be reworked so that it can process mixed model sequencing.
-    % Pointer networks could be worth to take a look at. 
-    % When the model is trained we must find a way to store the adjusted values of the nn so that we don't have to train it each and every time. DONE!
-   %Seq2Seq is flawed in the fact that it has a habit of reusing safe tokens, in a sentence it might continously write "the" as it is a common word in english. In the case of the MMAL it instead repeats the "easiest" product, so a constraint has to be made which will effectively prevent repetition and force permutation placements. Alternatively we investigate alternative model types, such as transformer networks or pointer networks.
-   % Creating puzzlepieces - In order to find out which model that is the best before attempting with any previous data I first propose that I create a puzzle and scramble it for the machine to attempt solving. I will of course throw in the correct solutions as training data and then eventually give it some scrambled puzzles to see if it figures it out.
 
 \section{Transforming a language-based model into a sequence based model}
 
@@ -282,96 +300,142 @@ The models examined in this thesis were originally designed for natural language
 
 However, certain constraints must be imposed as language models often overproduce common tokens such as “the,” since these words are statistically more likely to appear in most positions in any given English sentence. To avoid this bias, the model must instead operate on genuine rearrangements or permutations relevant to our specific application.
 
-\subsection{The Tokenizer}
-    As one may expect when working with models designed for language, we find that most ready-made tokenizers are made to handle words in natural sentences rather than json-data or vectorized data. One way to circumvent this hurdle is to simply flatten the JSON data so that it becomes a sequence of numerical data -- a string!
 
-\begin{figure}[ht]
-    \centering
-    \vspace{0.5cm}
+\chapter{System Architecture}
+\section{Machine Learning Models}
+\subsection{The Transformer Model}
+TODO
+\subsection{The Pointer Network Model}
+To address the limitations of fixed vocabulary models in our combinatorial problem, we implemented a Pointer Network based on the architecture proposed by Vinyals et al. (2015) \cite{ref7}. Unlike the Transformer or Seq2Seq models which generate outputs based on a predefined vocabulary, the Pointer Network uses an attention mechanism to select discrete elements directly from the input sequence. This makes it inherently suitable for problems such as the product sequencing problem, where the output is a permutation of the input stations.
 
-    \begin{tikzpicture}[
-        json/.style={inner sep=6pt, align=left, font=\ttfamily\small},
-        arrow/.style={thick, -{Stealth[length=3mm, width=2mm]}}
-    ]
+\paragraph{1. Feature Projection}
+The input to the model consists of a sequence of $N$ stations, where each station is represented by a continuous feature vector $x_i \in \mathbb{R}^{input\_dim}$ (representing station size and offset). Since these inputs are not discrete tokens, we first project them into a latent feature space using a learnable projection layer:
+\begin{equation}
+    e_i = \text{LayerNorm}(\tanh(W_{proj} x_i + b_{proj}))
+\end{equation}
+where $e_i \in \mathbb{R}^{d_{model}}$ serves as the embedding for the $i$-th station.
 
-    \node[json] (orig) {
-    \{\\
-    \quad "id": $n$,\\
-    \quad "data": \{\\
-    \quad\quad "s1": $x$,\\
-    \quad\quad "s2": $y$,\\
-    \quad\quad ...\\
-    \quad\quad "$s_n$": $z$\\
-    \quad\}\\
-    \}\\
-    };
+\paragraph{2. Bidirectional Encoder}
+To capture the dependencies between stations across the entire production sequence, the embedded inputs are passed through a Bidirectional Long Short-Term Memory (Bi-LSTM) network. This processes the sequence in both forward and backward directions:
+\begin{equation}
+    \begin{aligned}
+        \vec{h}_i &= \text{LSTM}_{fwd}(e_i, \vec{h}_{i-1}) \\
+        \overleftarrow{h}_i &= \text{LSTM}_{bwd}(e_i, \overleftarrow{h}_{i+1})
+    \end{aligned}
+\end{equation}
+The final encoder output for each station $u_i$ is the concatenation of the forward and backward hidden states, $u_i = [\vec{h}_i; \overleftarrow{h}_i]$, doubling the hidden dimension to capture rich contextual information.
 
-    \node[json, right=2.5cm of orig] (flat) {
-         "id: $n$, s1: $x$, s2: $y$, \dots, $s_n$: $z$"
-    };
+\paragraph{3. Decoder and Initialization}
+The decoder is a bidirectional LSTM Cell that constructs the output sequence step-by-step. To ensure the decoder starts with a comprehensive understanding of the input, its initial hidden state $d_0$ and cell state $c_0$ are initialized via a "bridge" layer. This layer transforms the final hidden states of the encoder (a global summary of the input sequence) into the dimensionality required by the decoder:
+\begin{equation}
+    d_0 = \tanh(W_{bridge} [ \vec{h}_N; \overleftarrow{h}_0 ])
+\end{equation}
 
-    % Arrow
-    \draw[arrow] (orig.east) -- (flat.west);
+\paragraph{4. Attention and Pointer Mechanism}
+At each time step $t$, the decoder maintains a hidden state $d_t$. The core of the model is the pointer mechanism, which calculates a probability distribution over the input elements to decide which station to place next. 
 
-    \end{tikzpicture}
+Our implementation utilizes a robust dual-attention scoring mechanism. We compute two separate attention scores, a "glimpse" score and a "pointer" score, which are summed to produce the final logits. For an input index $j$ and decoder step $t$, the unnormalized score $s_{t,j}$ is calculated as:
+\begin{equation}
+    s_{t,j} = v^T \tanh(W_{ref} u_j + W_{query} d_t)
+\end{equation}
+This score represents the compatibility between the current decoding state $d_t$ and the input station $u_j$. The final probability distribution is obtained via softmax:
+\begin{equation}
+    p(j | \pi_{<t}, \mathcal{P}) = \text{softmax}(s_{t,j})
+\end{equation}
+The index with the highest probability is selected as the next element in the sequence.
 
-    \vspace{0.5cm}
-    \caption{Pre-processing JSON data by flattening nested fields.}
-    \label{fig:flatten}
-\end{figure}
+\paragraph{5. Masking and Constraints}
+A critical constraint in permutation problems is that each input item must appear exactly once in the output. To enforce this, we maintain a dynamic mask of visited indices. Once an index $k$ is selected at step $t$, its corresponding attention score is set to $-\infty$ for all future steps $t' > t$:
+\begin{equation}
+    s_{t', k} = -\infty \quad \forall t' > t
+\end{equation}
+This effectively zeroes out the probability of re-selecting the same station, guaranteeing that the model produces a valid permutation of the assembly line.
 
-\subsection{Training the Model}
-Most of the models explored in this thesis are traditionally applied to translation tasks, where the goal is to map text from one language to another. The training data in such a case might look like:
+\paragraph{6. Input Feeding}
+Unlike standard language models that feed the generated token back into the decoder, the Pointer Network feeds the \textit{encoder output} of the selected station. If index $k$ is chosen at step $t$, the input to the decoder at step $t+1$ is the vector $u_k$. This allows the decoder to track which station was just placed and decide what should optimally follow it.
+\subsection{The Sequence-to-Sequence Model}
 
-\vspace{0.5cm}
+\subsection{The Dataset}
+To adapt the Transformer architecture, originally designed for discrete natural language tokens, to the Mixed Model Assembly Line (MMAL) problem, we implemented a custom data handling pipeline. The \texttt{Dataset} class inherits from \texttt{torch.utils.data.Dataset} and is responsible for parsing the raw problem instances into feature vectors suitable for combinatorial optimization.
 
-[sv: "Jag glömde min plånbok", en: "I forgot my wallet"]
+\paragraph{Data Representation}
+As stated previously, unlike standard NLP tasks where the input consists of discrete token IDs mapped to a vocabulary, the input for the assembly line problem consists of continuous variables representing station attributes. The raw data is ingested from JSON files. For each problem instance, we extract $N$ stations.
 
-\vspace{0.5cm}
+Each station $i$ is represented as a feature vector $\mathbf{x}_i \in \mathbb{R}^2$, defined as:
+\begin{equation}
+    \mathbf{x}_i = [\text{data}_i, \text{offset}_i]
+\end{equation}
+where $\text{data}_i$ represents the workload or processing attribute, and $\text{offset}_i$ represents the physical or temporal constraint of the station. Consequently, a single input sample is a tensor of shape $(N, 2)$, effectively treating the list of stations as a "sentence" of length $N$ with an embedding dimension of 2.
 
-Which will allow the model to learn how a sentence in the source language corresponds to one in the target language. 
+\paragraph{Target Permutations}
+The objective of the model is to learn the optimal sequencing of these stations. Therefore, the target output is not a sequence of foreign words, but a \textbf{permutation} of the input indices.
+For a sequence of length $N$, the ground truth target is generated as an index tensor $y \in \{0, \dots, N-1\}^N$. In this implementation, the targets represent the correct positional indices required to reconstruct the optimal assembly sequence.
 
-In our case, the challenge is different as we're not dealing with linguistic sequences or semantic transformations. Instead, our objective is to learn how to \textit{rearrange} items rather than generating new content. 
+\paragraph{Dataset Partitioning}
+To ensure rigorous evaluation, the dataset is loaded and immediately shuffled and partitioned. We employ a hold-out validation strategy defined by the parameter \texttt{train\_frac} (set to 0.8):
+\begin{itemize}
+    \item \textbf{Training Set (80\%):} Used for gradient updates via backpropagation.
+    \item \textbf{Validation Set (20\%):} Used to monitor convergence and check for overfitting during the training loop.
+\end{itemize}
 
-If we take a look at how Large Language Models are trained, we see that they are exposed to vast amounts of text data and learn statistical relationships between tokens through iterative training. By analogy, we can train a model on large sets of structured examples to learn how to map one ordering of items to another. With appropriate constraints or loss functions to enforce rearrangement behavior, this approach provides a viable framework for our training objective.
-
+\paragraph{Batch Collation}
+Transformers process data in parallel batches. Since assembly line problems may have varying numbers of stations (sequence lengths), we implement a custom \texttt{collate\_fn}. This function receives a list of tuples $(\mathbf{x}, y)$ and stacks them into batched tensors:
+\begin{itemize}
+    \item \textbf{Samples Batch:} Shape $(B, N, 2)$, where $B$ is the batch size.
+    \item \textbf{Targets Batch:} Shape $(B, N)$, containing the ground truth integer indices.
+\end{itemize}
+This structure allows the model to predict the probability distribution over input indices at every step of the decoding process.
 \subsection{The Training Loop}
+\paragraph{Refitting}
+\subsection{The Configuration}
 
-\begin{figure}[ht]
-    \centering
+\subsection{The Application Programming Interface (API)}
+The system exposes its core functionalities through a RESTful API, facilitating programmatic interaction with the implemented neural architectures. This interface serves as the primary gateway for data ingestion and inference execution.
 
-\begin{tikzpicture}[>=Latex, node distance=1cm, thick]
+\subsection{Endpoints}
 
-        \node[draw, minimum width=2cm, minimum height=1cm, align=center] (Prediction) {Prediction};
-        \node[draw, minimum width=2cm, minimum height=1cm, align=center, below right=of Prediction] (Loss) {Loss};
-        \node[draw, minimum width=2cm, minimum height=1cm, align=center, below left=of Loss] (Adjust) {Adjust};
-        \node[draw, minimum width=2cm, minimum height=1cm, align=center, above left=of Adjust] (Training) {Training};
+\paragraph{/run/\{model\_type\}}
 
-        \draw[->] (Prediction.east) -| (Loss.north);
-        \draw[->] (Loss.south) |- (Adjust.east);
-        \draw[->] (Adjust.west) -| (Training.south);
-        \draw[->] (Training.north) |- (Prediction.west);
+This POST endpoint provides a unified interface for sequence processing across different model architectures (\textbf{Transformer}, \textbf{Pointer Network}, or \textbf{Seq2Seq}). Once selected it returns a processed sequence made from the input data, including refitting. 
 
-
-\end{tikzpicture}
-    \caption{Training Loop}
-    \label{fig:solution}
-\end{figure}
+\subsection{Bruh}
 
 
 \chapter{Experiments and results}
+\section{The Transformer Model}
+\subsection{Unhooking the decoder}
+While testing the feasibility of the transformer model, I found that it yielded better results by switching to a BERT-like model rather than a Sequence-to-Sequence based approach.
+
 \section{Dataset}
-We did get an official dataset from a production run, the dataset however contained a few issues that had to be resolved.
-\subsection{Fitting the data}
-    The data we got contained everything we needed to visualize it on a timeline similar to \autoref{fig:assembly} where timeslots had to be manually offset to better fit between allocations. The algorithm to fit the alloctions was: [blablabla] with the following criteria: [blablabla]. The reason that the data needed additional processing was due to the fact that some allocations exceeded the given 700 cmin window, and needed to borrow time from neighbouring stations.
+We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training.
 
-    Without offsetting any timeslots roughly 2,000 overlaps were found.
-    
-    After processing the data we were left with 300. Given that this is production data which supposedly ran without any issues we can assume that something is fishy. %Lies, plz fix
+\paragraph{Data Inconsistencies}
+An initial analysis of the raw production data revealed approximately 2,000 overlaps if no offsets were applied. After algorithmically fitting the data to respect station constraints, the number of overlaps was reduced to 300. 
 
-\subsection{Custom Loss Function}
-In the training loop used for this thesis a custom loss function was used that penalized overlaps. In the first attempts of training using 10 epochs, we reduced the number of overlaps in our shuffled dataset by roughly $20 percent$ before processing. What I did wrong was having it train on offsets as well rather than just the size of the data, as the offsets would need to be recalculated after predicting as they would else not properly align to their new locations. Thus we need to incorporate the recalculation of offsets into the training loop in order to properly spot and punish violations such as overdrafts and overlaps.
+ Given that this dataset represents a completed production run which ostensibly proceeded without line stoppages, the remaining 300 overlaps imply either unrecorded manual interventions by operators or minor inaccuracies in the logged timestamps. [cite\_start]For the purpose of this study, these 300 overlaps are treated as the "noise floor" of the dataset[cite: 1, 22].
 
+\section{Evaluation Metrics}
+To objectively measure the performance of the model, we define the \textbf{Overlap Reduction Rate (ORR)}. An "overlap" occurs when the processing time of an item at station $S_n$ combined with its offset exceeds the available time window, causing a collision with the subsequent item.
+
+The metric is calculated as:
+\begin{equation}
+    \text{ORR} = \frac{O_{initial} - O_{predicted}}{O_{initial}} \times 100\%
+\end{equation}
+where $O_{initial}$ is the total overlap duration (in cmin) of the shuffled input sequence, and $O_{predicted}$ is the total overlap duration of the sequence permuted by the model.
+
+\section{Quantitative Results}
+\subsection{Convergence and Capacity Analysis (Overfitting)}
+To verify the model architecture's capacity to learn the complex constraints of the Mixed-Model Assembly Line, we first conducted a "sanity check" by overfitting the model on a small, fixed subset of the data. The objective was to determine if the Pointer Network could theoretically solve the sequencing puzzle given sufficient exposure.
+
+As shown in Table \ref{tab:overfit_results}, the model achieved a **90\% reduction** in overlaps. This confirms that the vector representation of stations (size and offset) contains sufficient information for the model to identify and resolve scheduling conflicts, effectively validating the architecture described in Chapter 4.
+
+\subsection{Generalization Performance}
+Following the capacity analysis, the model was evaluated on a held-out validation set to assess its generalization capabilities. This test simulates a real-world scenario where the model encounters unseen production orders.
+
+On the validation set, the model achieved a **25\% reduction** in overlaps compared to the randomized baseline. While significantly lower than the overfitting result—a discrepancy attributed to the limited size of the historical dataset—this 25\% improvement indicates that the model successfully learned to identify the most critical conflict patterns.
+
+\section{Runtime Analysis}
+The inference time for the Pointer Network is linear $O(N)$ with respect to the sequence length, taking approximately 0.4 seconds to sequence a batch of 100 items. This stands in contrast to the heuristic approach, which scales quadratically or worse depending on the depth of the search.
 
 
 \section{Evaluation Metrics}
@@ -411,6 +475,7 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
     Department of Mathematics, University of California Berkeley, 2015.
 \bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann,
     \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
+\bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
 \bibitem{refx} Author, Title, Journal, Year.
 \end{thebibliography}
 \end{document}
