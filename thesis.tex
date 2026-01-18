@@ -9,6 +9,7 @@
 \usepackage{titlesec}
 \usepackage{amsmath} 
 \usepackage{amssymb}
+\usepackage{booktabs}
 
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, calc, positioning, patterns}
@@ -166,6 +167,7 @@ Jump-out, on the other hand, can be considered an $O(1)$ problem, though it pres
 
 
 \section{Defining Overlaps}
+\label{chap:overlap}
 
 Overlaps in this case arise from timing dependencies: each item’s progress depends on how long it takes to process at its respective station. If two items are processed consecutively at station $s_n$, and both of those items require additional time from its neighbouring stations $s_{n-1}$ and $s_{n+1}$ there will not be sufficient time for all operations to complete. This results in what's visualized as an overlap. In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow these operations to complete before production may continue.
 
@@ -175,7 +177,7 @@ Overlaps in this case arise from timing dependencies: each item’s progress dep
 \label{ch:sota}
 
 
-The Mixed-Model Assembly Line (MMAL) problem is formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms. %See \cite{ch3}
+The Mixed-Model Assembly Line (MMAL) problem is formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms. 
 
 In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
 
@@ -198,7 +200,7 @@ To emulate the sequential decision-making process of human schedulers, we first 
 
 In previous works addressing similar scheduling problems, researchers have applied Recurrent Neural Networks (RNNs), often utilizing Long Short-Term Memory (LSTM) units within a sequence-to-sequence (Seq2Seq) framework \cite{ref2}.
 
-A defining characteristic of LSTMs is their ability to selectively forget irrelevant or outdated information via the ``forget gate.'' This mechanism allows the model to focus on relevant patterns over time, mitigating the vanishing gradient problem inherent in standard RNNs and improving the modeling of long-term dependencies \cite{ref4, ref9}.
+A defining characteristic of LSTMs is their ability to selectively forget irrelevant or outdated information via the "forget gate". This mechanism allows the model to focus on relevant patterns over time, mitigating the vanishing gradient problem inherent in standard RNNs and improving the modeling of long-term dependencies \cite{ref4, ref9}.
 
 \subsection{Sequence-to-Sequence (Seq2Seq) Models}
 
@@ -231,7 +233,7 @@ For scheduling problems, this translates into the ability to model complex inter
 
 While Transformers excel at context, they still typically rely on generating tokens from a fixed vocabulary. The \textbf{Pointer Network} is the only architecture in this analysis specifically designed for combinatorial optimization and permutation problems \cite{ref7}.
 
-Implemented using an encoder-decoder structure (often LSTM-based), the Pointer Network utilizes a specialized attention mechanism to generate context vectors that ``point'' to specific elements in the input sequence rather than predicting a value from a dictionary. This explicitly solves the fixed vocabulary problem: the model selects which station to place next directly from the available input pool. This significantly reduces the risk of repeating or hallucinating items—a common failure mode in standard Seq2Seq models \cite{ref7}.
+Implemented using an encoder-decoder structure (often LSTM-based), the Pointer Network utilizes a specialized attention mechanism to generate context vectors that "point" to specific elements in the input sequence rather than predicting a value from a dictionary. This explicitly solves the fixed vocabulary problem: the model selects which station to place next directly from the available input pool. This significantly reduces the risk of repeating or hallucinating items, a common failure mode in standard Seq2Seq models \cite{ref7}.
 
 \chapter{Methodology}
 \section{The Heuristic Approach}
@@ -300,93 +302,41 @@ The models examined in this thesis were originally designed for natural language
 
 However, certain constraints must be imposed as language models often overproduce common tokens such as “the,” since these words are statistically more likely to appear in most positions in any given English sentence. To avoid this bias, the model must instead operate on genuine rearrangements or permutations relevant to our specific application.
 
+\subsection{Workarounds}
+\label{chap:workarounds}
+
+To adapt the Transformer architecture for product sequencing without suffering from the previously mentioned limitations, two specific architectural modifications were implemented:
+
+\subparagraph{Hybrid Continuous-Discrete Embedding}
+Standard NLP models map a finite set of words to static vectors. Since product variations (specifically size and weight) are continuous rather than discrete, a traditional vocabulary approach would require an infinite vocabulary size to capture every possible variation.
+
+To resolve this, the implementation utilizes a hybrid \textit{ObjectEmbedding} layer. The discrete station identifier is mapped via a standard lookup table, while the continuous size value is projected through a linear layer. These two feature sets are concatenated to form the input vector:
+$$
+E_{input} = \text{Concat}(\text{Embedding}(ID), \text{Linear}(Size))
+$$
+This allows the attention mechanism to process the semantic identity of the station alongside the precise magnitude of the load, enabling the model to generalize to unseen product sizes without expanding the vocabulary.
+
+\subparagraph{Decoupling Prediction from Sequencing}
+To strictly prevent the repetition of tokens common in generative language models, the sequence generation is decoupled from the neural network entirely.
+
+The Transformer is configured as a standalone Encoder, serving purely as a regressor to predict the behavioral characteristics (drift offsets) of the items. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the Transformer's predictions to minimize a conflict cost matrix:
+$$
+\text{Cost}_{ij} = \sum (\max(0, | \text{Drift}_i | + | \text{Drift}_j | - \text{Limit}))^2
+$$
+By using the Transformer solely for high-fidelity feature extraction and delegating the sorting logic to a mathematical heuristic, the system ensures that the output is always a valid permutation of the inputwhich will guarantuee that no items are duplicated or omitted.
+
 
 \chapter{System Architecture}
 \section{Machine Learning Models}
 \subsection{The Transformer Model}
 TODO
+\paragraph{The Greedy Algorithm} The Transformer model utlizes a Greedy Algorithm for better fitting objects
 \subsection{The Pointer Network Model}
-To address the limitations of fixed vocabulary models in our combinatorial problem, we implemented a Pointer Network based on the architecture proposed by Vinyals et al. (2015) \cite{ref7}. Unlike the Transformer or Seq2Seq models which generate outputs based on a predefined vocabulary, the Pointer Network uses an attention mechanism to select discrete elements directly from the input sequence. This makes it inherently suitable for problems such as the product sequencing problem, where the output is a permutation of the input stations.
-
-\paragraph{1. Feature Projection}
-The input to the model consists of a sequence of $N$ stations, where each station is represented by a continuous feature vector $x_i \in \mathbb{R}^{input\_dim}$ (representing station size and offset). Since these inputs are not discrete tokens, we first project them into a latent feature space using a learnable projection layer:
-\begin{equation}
-    e_i = \text{LayerNorm}(\tanh(W_{proj} x_i + b_{proj}))
-\end{equation}
-where $e_i \in \mathbb{R}^{d_{model}}$ serves as the embedding for the $i$-th station.
-
-\paragraph{2. Bidirectional Encoder}
-To capture the dependencies between stations across the entire production sequence, the embedded inputs are passed through a Bidirectional Long Short-Term Memory (Bi-LSTM) network. This processes the sequence in both forward and backward directions:
-\begin{equation}
-    \begin{aligned}
-        \vec{h}_i &= \text{LSTM}_{fwd}(e_i, \vec{h}_{i-1}) \\
-        \overleftarrow{h}_i &= \text{LSTM}_{bwd}(e_i, \overleftarrow{h}_{i+1})
-    \end{aligned}
-\end{equation}
-The final encoder output for each station $u_i$ is the concatenation of the forward and backward hidden states, $u_i = [\vec{h}_i; \overleftarrow{h}_i]$, doubling the hidden dimension to capture rich contextual information.
-
-\paragraph{3. Decoder and Initialization}
-The decoder is a bidirectional LSTM Cell that constructs the output sequence step-by-step. To ensure the decoder starts with a comprehensive understanding of the input, its initial hidden state $d_0$ and cell state $c_0$ are initialized via a "bridge" layer. This layer transforms the final hidden states of the encoder (a global summary of the input sequence) into the dimensionality required by the decoder:
-\begin{equation}
-    d_0 = \tanh(W_{bridge} [ \vec{h}_N; \overleftarrow{h}_0 ])
-\end{equation}
-
-\paragraph{4. Attention and Pointer Mechanism}
-At each time step $t$, the decoder maintains a hidden state $d_t$. The core of the model is the pointer mechanism, which calculates a probability distribution over the input elements to decide which station to place next. 
-
-Our implementation utilizes a robust dual-attention scoring mechanism. We compute two separate attention scores, a "glimpse" score and a "pointer" score, which are summed to produce the final logits. For an input index $j$ and decoder step $t$, the unnormalized score $s_{t,j}$ is calculated as:
-\begin{equation}
-    s_{t,j} = v^T \tanh(W_{ref} u_j + W_{query} d_t)
-\end{equation}
-This score represents the compatibility between the current decoding state $d_t$ and the input station $u_j$. The final probability distribution is obtained via softmax:
-\begin{equation}
-    p(j | \pi_{<t}, \mathcal{P}) = \text{softmax}(s_{t,j})
-\end{equation}
-The index with the highest probability is selected as the next element in the sequence.
-
-\paragraph{5. Masking and Constraints}
-A critical constraint in permutation problems is that each input item must appear exactly once in the output. To enforce this, we maintain a dynamic mask of visited indices. Once an index $k$ is selected at step $t$, its corresponding attention score is set to $-\infty$ for all future steps $t' > t$:
-\begin{equation}
-    s_{t', k} = -\infty \quad \forall t' > t
-\end{equation}
-This effectively zeroes out the probability of re-selecting the same station, guaranteeing that the model produces a valid permutation of the assembly line.
-
-\paragraph{6. Input Feeding}
-Unlike standard language models that feed the generated token back into the decoder, the Pointer Network feeds the \textit{encoder output} of the selected station. If index $k$ is chosen at step $t$, the input to the decoder at step $t+1$ is the vector $u_k$. This allows the decoder to track which station was just placed and decide what should optimally follow it.
-\subsection{The Sequence-to-Sequence Model}
-
+TODO
 \subsection{The Dataset}
-To adapt the Transformer architecture, originally designed for discrete natural language tokens, to the Mixed Model Assembly Line (MMAL) problem, we implemented a custom data handling pipeline. The \texttt{Dataset} class inherits from \texttt{torch.utils.data.Dataset} and is responsible for parsing the raw problem instances into feature vectors suitable for combinatorial optimization.
-
-\paragraph{Data Representation}
-As stated previously, unlike standard NLP tasks where the input consists of discrete token IDs mapped to a vocabulary, the input for the assembly line problem consists of continuous variables representing station attributes. The raw data is ingested from JSON files. For each problem instance, we extract $N$ stations.
-
-Each station $i$ is represented as a feature vector $\mathbf{x}_i \in \mathbb{R}^2$, defined as:
-\begin{equation}
-    \mathbf{x}_i = [\text{data}_i, \text{offset}_i]
-\end{equation}
-where $\text{data}_i$ represents the workload or processing attribute, and $\text{offset}_i$ represents the physical or temporal constraint of the station. Consequently, a single input sample is a tensor of shape $(N, 2)$, effectively treating the list of stations as a "sentence" of length $N$ with an embedding dimension of 2.
-
-\paragraph{Target Permutations}
-The objective of the model is to learn the optimal sequencing of these stations. Therefore, the target output is not a sequence of foreign words, but a \textbf{permutation} of the input indices.
-For a sequence of length $N$, the ground truth target is generated as an index tensor $y \in \{0, \dots, N-1\}^N$. In this implementation, the targets represent the correct positional indices required to reconstruct the optimal assembly sequence.
-
-\paragraph{Dataset Partitioning}
-To ensure rigorous evaluation, the dataset is loaded and immediately shuffled and partitioned. We employ a hold-out validation strategy defined by the parameter \texttt{train\_frac} (set to 0.8):
-\begin{itemize}
-    \item \textbf{Training Set (80\%):} Used for gradient updates via backpropagation.
-    \item \textbf{Validation Set (20\%):} Used to monitor convergence and check for overfitting during the training loop.
-\end{itemize}
-
-\paragraph{Batch Collation}
-Transformers process data in parallel batches. Since assembly line problems may have varying numbers of stations (sequence lengths), we implement a custom \texttt{collate\_fn}. This function receives a list of tuples $(\mathbf{x}, y)$ and stacks them into batched tensors:
-\begin{itemize}
-    \item \textbf{Samples Batch:} Shape $(B, N, 2)$, where $B$ is the batch size.
-    \item \textbf{Targets Batch:} Shape $(B, N)$, containing the ground truth integer indices.
-\end{itemize}
-This structure allows the model to predict the probability distribution over input indices at every step of the decoding process.
+TODO
 \subsection{The Training Loop}
-\paragraph{Refitting}
+TODO, (see \ref{chap:workarounds})
 \subsection{The Configuration}
 
 \subsection{The Application Programming Interface (API)}
@@ -404,41 +354,70 @@ This POST endpoint provides a unified interface for sequence processing across d
 \chapter{Experiments and results}
 \section{The Transformer Model}
 \subsection{Unhooking the decoder}
-While testing the feasibility of the transformer model, I found that it yielded better results by switching to a BERT-like model rather than a Sequence-to-Sequence based approach.
+While testing the feasibility of the transformer model, I found that it yielded better results by switching to a BERT-like model rather than a Sequence-to-Sequence based approach. 
+
+\subsection{Task Performance}
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison model performance in overlap reduction for $S$ = $e^3$ (TODO)}
+    \label{tab:overlap_results}
+    \begin{tabular}{l c c}
+        \toprule
+        \textbf{Training Size} & \textbf{Overlap Ratio ($R$)} & \textbf{} \\
+        \midrule
+        $1e^3$ & 0.45 & 110 \\
+        $1e^6$ & 0.62 & 125 \\
+        $1e^9$ & 0.78 & 140 \\
+        $1e^{12}$ & \textbf{0.85} & 138 \\
+        \bottomrule
+    \end{tabular}
+    \centering
+    \caption{Comparison model performance in overlap reduction for $S$ = $e^6$ (TODO)}
+    \label{tab:overlap_results}
+    \begin{tabular}{l c c}
+        \toprule
+        \textbf{Training Size} & \textbf{Overlap Ratio ($R$)} & \textbf{} \\
+        \midrule
+        $1e^3$ & 0.45 & 110 \\
+        $1e^6$ & 0.62 & 125 \\
+        $1e^9$ & 0.78 & 140 \\
+        $1e^{12}$ & \textbf{0.85} & 138 \\
+        \bottomrule
+    \end{tabular}
+    \centering
+    \caption{Comparison model performance in overlap reduction for $S$ = $e^9$ (TODO)}
+    \label{tab:overlap_results}
+    \begin{tabular}{l c c}
+        \toprule
+        \textbf{Training Size} & \textbf{Overlap Ratio ($R$)} & \textbf{} \\
+        \midrule
+        $1e^3$ & 0.45 & 110 \\
+        $1e^6$ & 0.62 & 125 \\
+        $1e^9$ & 0.78 & 140 \\
+        $1e^{12}$ & \textbf{0.85} & 138 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{The Pointer Network}
+\subsection{Adding the offset handler}
+    While the Transformer model used a greedy algorithm for adjusting offsets on runtime, the same idea was applied to the pointer network. (See [TODO])
 
 \section{Dataset}
-We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training.
+We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a dummy dataset was generated for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it)
 
-\paragraph{Data Inconsistencies}
-An initial analysis of the raw production data revealed approximately 2,000 overlaps if no offsets were applied. After algorithmically fitting the data to respect station constraints, the number of overlaps was reduced to 300. 
-
- Given that this dataset represents a completed production run which ostensibly proceeded without line stoppages, the remaining 300 overlaps imply either unrecorded manual interventions by operators or minor inaccuracies in the logged timestamps. [cite\_start]For the purpose of this study, these 300 overlaps are treated as the "noise floor" of the dataset[cite: 1, 22].
 
 \section{Evaluation Metrics}
-To objectively measure the performance of the model, we define the \textbf{Overlap Reduction Rate (ORR)}. An "overlap" occurs when the processing time of an item at station $S_n$ combined with its offset exceeds the available time window, causing a collision with the subsequent item.
-
-The metric is calculated as:
+To objectively measure the performance of the model, we monitor performance of the models in overlap reduction (see \ref{chap:overlap}) using a simple ratio. The ratio is:
 \begin{equation}
-    \text{ORR} = \frac{O_{initial} - O_{predicted}}{O_{initial}} \times 100\%
+    \text{ratio} = \frac{O_{predicted}}{O_{source}}
 \end{equation}
-where $O_{initial}$ is the total overlap duration (in cmin) of the shuffled input sequence, and $O_{predicted}$ is the total overlap duration of the sequence permuted by the model.
+where $O_{source}$ is the total number of overlaps of the shuffled input sequence, and $O_{predicted}$ is the total number of overlaps of the predicted sequence. The closer to $0$ it gets, the better it performs, and if it goes above $1$ we're yielding worse results than before.
 
-\section{Quantitative Results}
-\subsection{Convergence and Capacity Analysis (Overfitting)}
-To verify the model architecture's capacity to learn the complex constraints of the Mixed-Model Assembly Line, we first conducted a "sanity check" by overfitting the model on a small, fixed subset of the data. The objective was to determine if the Pointer Network could theoretically solve the sequencing puzzle given sufficient exposure.
-
-As shown in Table \ref{tab:overfit_results}, the model achieved a **90\% reduction** in overlaps. This confirms that the vector representation of stations (size and offset) contains sufficient information for the model to identify and resolve scheduling conflicts, effectively validating the architecture described in Chapter 4.
-
-\subsection{Generalization Performance}
-Following the capacity analysis, the model was evaluated on a held-out validation set to assess its generalization capabilities. This test simulates a real-world scenario where the model encounters unseen production orders.
-
-On the validation set, the model achieved a **25\% reduction** in overlaps compared to the randomized baseline. While significantly lower than the overfitting result—a discrepancy attributed to the limited size of the historical dataset—this 25\% improvement indicates that the model successfully learned to identify the most critical conflict patterns.
-
-\section{Runtime Analysis}
-The inference time for the Pointer Network is linear $O(N)$ with respect to the sequence length, taking approximately 0.4 seconds to sequence a batch of 100 items. This stands in contrast to the heuristic approach, which scales quadratically or worse depending on the depth of the search.
+\section{Hardware Limitations}
+    While training the models on a larger set of data (as Transformers generally perform better with more training data) I ran out of available memory so the size of the training data had to be restricted to 500,000 objects at most.
 
 
-\section{Evaluation Metrics}
 \section{Runtime Analysis}
 
 \chapter{Discussion}
