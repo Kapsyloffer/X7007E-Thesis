@@ -183,7 +183,7 @@ In recent years, Deep Reinforcement Learning (DRL) has become a dominant approac
 
 For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by random task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
-However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line, especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating provene human strategies, hence I've chosen to use Deep Unsupervised Learning instead.
+However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating provene human strategies, hence I've chosen to use Deep Unsupervised Learning instead.
 
 While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
 
@@ -307,36 +307,81 @@ However, certain constraints must be imposed as language models often overproduc
 
 To adapt the Transformer architecture for product sequencing without suffering from the previously mentioned limitations, two specific architectural modifications were implemented:
 
-\subparagraph{Hybrid Continuous-Discrete Embedding}
-Standard NLP models map a finite set of words to static vectors. Since product variations (specifically size and weight) are continuous rather than discrete, a traditional vocabulary approach would require an infinite vocabulary size to capture every possible variation.
+\subparagraph{Continuous-Discrete Embedding}
+Standard NLP models map a finite set of words to static vectors. Since product variations are continuous rather than discrete, a traditional vocabulary approach would require an infinite vocabulary size to capture every possible variation.
 
-To resolve this, the implementation utilizes a hybrid \textit{ObjectEmbedding} layer. The discrete station identifier is mapped via a standard lookup table, while the continuous size value is projected through a linear layer. These two feature sets are concatenated to form the input vector:
-$$
+To resolve this, the implementation utilizes a custom \textit{ObjectEmbedding} layer. The discrete station identifier is mapped via a standard lookup table, while the size value is projected through a linear layer. These two feature sets are concatenated to form the input vector:
+\begin{equation}
 E_{input} = \text{Concat}(\text{Embedding}(ID), \text{Linear}(Size))
-$$
-This allows the attention mechanism to process the semantic identity of the station alongside the precise magnitude of the load, enabling the model to generalize to unseen product sizes without expanding the vocabulary.
+\end{equation}
+This allows the attention mechanism to process the semantic identity of the station, enabling the model to generalize to unseen product sizes without expanding the vocabulary.
 
 \subparagraph{Decoupling Prediction from Sequencing}
-To strictly prevent the repetition of tokens common in generative language models, the sequence generation is decoupled from the neural network entirely.
+\label{subp:decoupling}
+To strictly prevent the common issue of repeting tokens in generative language models, and instead repurpose it for permutation, the sequence generation decoupled from the neural network entirely.
 
-The Transformer is configured as a standalone Encoder, serving purely as a regressor to predict the behavioral characteristics (drift offsets) of the items. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the Transformer's predictions to minimize a conflict cost matrix:
-$$
+The Transformer is configured as a standalone Encoder, serving purely as a regressor to predict the offsets of each station. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the Transformer's predictions to minimize a conflict cost matrix:
+\begin{equation}
 \text{Cost}_{ij} = \sum (\max(0, | \text{Drift}_i | + | \text{Drift}_j | - \text{Limit}))^2
-$$
-By using the Transformer solely for high-fidelity feature extraction and delegating the sorting logic to a mathematical heuristic, the system ensures that the output is always a valid permutation of the inputwhich will guarantuee that no items are duplicated or omitted.
+\end{equation}
+
+By using the Transformer solely for feature extraction, and delegating the sorting logic to mathematics, the system ensures that the output is always a valid permutation of the input, which will guarantuee that no items become duplicated or omitted.
 
 
 \chapter{System Architecture}
+\section {Data generation}
+\subsection{Constants}
+For data generation the following constants were used:
+\begin{table}[htbp]
+    \centering
+    \caption{Table of Constants used in Data Generation}
+    \label{tab:generation_constants}
+    \begin{tabular}{l c l} % Left-aligned, Centered, Left-aligned
+        \toprule
+        \textbf{Constant} & \textbf{Default Value} & \textbf{Description} \\ 
+        \midrule
+        Objects    & 100     & Total number of objects in the testing sequence \\
+        Stations   & 35      & Number of stations \\
+        Takt       & 700     & The cycle time ($Cmin$) \\
+        Drift      & 200     & The size of the drift area ($Cmin$) \\
+        Gap        & 5       & Minimum buffer distance between objects \\
+        Multiplier & 500     & Constant value to multiply \textit{Objects} with \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 \section{Machine Learning Models}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Table of Constants used for Machine Learning (Excluding paths)}
+    \label{tab:generation_constants}
+    \begin{tabular}{l c} % Left-aligned, Centered, Left-aligned
+        \toprule
+        \textbf{Constant} & \textbf{Default Value} \\ 
+        \midrule
+        batch\_size &  $16$ \\
+        num\_epochs & $10$ \\
+        lr & $1e^{-4}$ \\
+        d\_model & $512$ \\
+        dropout & $0.1$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 \subsection{The Transformer Model}
-TODO
-\paragraph{The Greedy Algorithm} The Transformer model utlizes a Greedy Algorithm for better fitting objects
+\label{sec:trans}
+
+The architecture utilized in this thesis is heavily based on the Transformer model proposed by Vaswani et al. \cite{ref5}, with modifications tailored specifically to the Mixed-Model Assembly Line (MMAL) problem, and adapted to function as a cost estimator for the assembly line. For one, the decoder has been decoupled to yield better results (see \ref{subp:decoupling}), and instead of processing text, the model has been fitted with a custom embedding layer which is tasked with reading the size of the work-load within a station, and find a better fit. (FIXME)
+
+\paragraph{Simulated Annealing} While the Transformer predicts the local impact of individual items, the global sequence scheduling is addressed using Simulated Annealing. This method explores the solution space of item permutations, using a cost matrix derived from the Transformer's drift predictions. By allowing for probabilistic acceptance of sub-optimal transitions Simulated Annealing avoids local optima that typically constrain greedy algorithms, resulting in a more stable assembly line schedule. (FIXME)
+
 \subsection{The Pointer Network Model}
-TODO
+(FIXME)
+
 \subsection{The Dataset}
-TODO
+(FIXME)
+
 \subsection{The Training Loop}
-TODO, (see \ref{chap:workarounds})
+(FIXME), (see \ref{chap:workarounds})
 \subsection{The Configuration}
 
 \subsection{The Application Programming Interface (API)}
@@ -348,7 +393,14 @@ The system exposes its core functionalities through a RESTful API, facilitating 
 
 This POST endpoint provides a unified interface for sequence processing across different model architectures (\textbf{Transformer}, \textbf{Pointer Network}, or \textbf{Seq2Seq}). Once selected it returns a processed sequence made from the input data, including refitting. 
 
-\subsection{Bruh}
+\paragraph{/run/\{model\_type\}/$int:n$/}
+
+This POST endpoint is the same as the one above it, but it accepts an integer $n$, which runs the model $n$ times and returns $n$ suggested sequences. (FIXME)
+
+
+\paragraph{/check/}
+
+This POST endpoint will count the number of \textbf{overlaps} on a given sequence, based on configuration data. 
 
 
 \chapter{Experiments and results}
@@ -401,14 +453,14 @@ While testing the feasibility of the transformer model, I found that it yielded 
 
 \section{The Pointer Network}
 \subsection{Adding the offset handler}
-    While the Transformer model used a greedy algorithm for adjusting offsets on runtime, the same idea was applied to the pointer network. (See [TODO])
+    While the Transformer model used a simulated annealing algorithm for adjusting offsets on runtime, the same idea was applied to the pointer network (See \ref{sec:trans})
 
 \section{Dataset}
-We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a dummy dataset was generated for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it)
+We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a dummy dataset was generated for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is trained on "harder" sequences.
 
 
 \section{Evaluation Metrics}
-To objectively measure the performance of the model, we monitor performance of the models in overlap reduction (see \ref{chap:overlap}) using a simple ratio. The ratio is:
+To objectively measure the performance of the model, we monitor performance of the models in overlap reduction (see \ref{chap:overlap}) using a simple ratio.
 \begin{equation}
     \text{ratio} = \frac{O_{predicted}}{O_{source}}
 \end{equation}
@@ -418,13 +470,13 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
     While training the models on a larger set of data (as Transformers generally perform better with more training data) I ran out of available memory so the size of the training data had to be restricted to 500,000 objects at most.
 
 
-\section{Runtime Analysis}
-
 \chapter{Discussion}
 \section{Interpretation of Results}
+    I think I did good. (FIXME)
 \section{Limitations}
-    As is the case in many machine learning projects the lack of data to train on led to the downfall of this project.
+    The data was bad, we're cooked. (FIXME)
 \section{Future Work}
+    Do again with good data and a million GPUs. (FIXME)
 
 
 \begin{thebibliography}{99}
