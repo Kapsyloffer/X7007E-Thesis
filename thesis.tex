@@ -10,6 +10,7 @@
 \usepackage{amsmath} 
 \usepackage{amssymb}
 \usepackage{booktabs}
+\usepackage{float}
 
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, calc, positioning, patterns, fadings}
@@ -397,8 +398,16 @@ For data generation the following constants were used:
         \bottomrule
     \end{tabular}
 \end{table}
-\subsection{Abstracting the Data}
-For ease of training, the training data has been essentially stripped down to its three most relevant components, \textit{object\_id}, \textit{[data]}, \textit{[offsets]}, where object\_id is the identifier, and data \& offsets are arrays containing the time requirements for each station labeled $s1$, $s2$, \dots :
+\subsection{Data Preprocessing and Abstraction}
+For the purpose of training optimization, the raw information is abstracted into a concise JSON schema. Each entry in the dataset is reduced to the following three attributes:
+
+\begin{itemize}
+    \item \textbf{Object ID} (\texttt{object}): An integer representing the unique identifier of the item.
+    \item \textbf{Station Data} (\texttt{data}): A mapping of station keys ($s_1, \dots, s_{35}$) to their respective time requirement values.
+    \item \textbf{Station Offsets} (\texttt{offsets}): A mapping of station keys to their relative offset values.
+\end{itemize}
+
+By utilizing these values, we can train a model to prioritize time-based decision-making over rigid rule-based systems. It is important to note that while the model operates without explicit constraints, the use of a sufficiently large dataset derived from expert tacit knowledge ensures that it implicitly adheres to fundamental ground rules, albeit with greater flexibility.
 
 \subsection{Offset Calculation and Centering}
 The positioning of an object within a station is determined by its \textit{offset} relative to the \textbf{Takt} start ($0$ locally). The script employs a dynamic centering logic that positions tasks within the remaining available capacity of the standard Takt window. This approach balances the empty space (or buffer) on either side of the allocation, adapting to the finish time of the preceding task.
@@ -502,8 +511,7 @@ This process results in a dataset where every input (the sequence of objects) ha
 
 (FIXME)
 
-
-\begin{figure}[htbp]
+\begin{figure}[H] 
 \centering
 \begin{minipage}{0.48\textwidth}
     \centering
