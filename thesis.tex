@@ -12,7 +12,7 @@
 \usepackage{booktabs}
 
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, calc, positioning, patterns}
+\usetikzlibrary{arrows.meta, calc, positioning, patterns, fadings}
 
 \tikzstyle{block} = [draw, fill=white, rectangle, 
     minimum height=3em, minimum width=6em]
@@ -58,6 +58,7 @@ To improve upon this, a heuristic algorithm has been proposed. The algorithm fir
 \section{Research Problem}
 Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given heuristic method. Such informed baselines could potentially reduce the runtime required to reach high-quality solutions, especially for complex sequencing instances. 
 
+\clearpage %TODO: Ta bort om nödvändigt
 \section{Objectives}
 The objectives of this thesis are:
 \begin{enumerate}
@@ -165,14 +166,61 @@ From an algorithmic perspective, a \emph{jump-in} can be treated as an $O(n)$ pr
 
 Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the line by a clock cycle, potentially causing overloads. Alternatively, the gap could be left in place, which avoids overloading but may result in lost revenue.
 
-
+\clearpage %blir fult annars
 \section{Defining Overlaps}
 \label{chap:overlap}
 
 Overlaps in this case arise from timing dependencies: each item’s progress depends on how long it takes to process at its respective station. If two items are processed consecutively at station $s_n$, and both of those items require additional time from its neighbouring stations $s_{n-1}$ and $s_{n+1}$ there will not be sufficient time for all operations to complete. This results in what's visualized as an overlap. In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow these operations to complete before production may continue.
 
-% TODO: En figur :D
-%
+
+\begin{figure}[htbp]
+\centering
+
+\begin{minipage}{0.45\textwidth}
+\centering
+\begin{tikzpicture}[>=Latex, font=\large, scale=0.5, transform shape]
+
+  \foreach \x in {0, 6, 2*6} {
+    \fill[gray!20] (\x - 1.2/2, -0.6) rectangle (\x + 1.2/2, 1.5 + 0.6);
+  }
+
+  \draw[thick, fill=white] (-0.6, 0) rectangle (6 - 1.2/2+1.2, 1.5);
+  
+  \draw[thick, fill=white] (6 - 1.2/2+1.5, 0) rectangle (6*2 + 1.2/2, 1.5);
+
+  \foreach \x/\label in {0/{$T-1$}, 6/{$T$}, 2*6/{$T+1$}} {
+    \draw[very thick] (\x, -0.6) -- (\x, 1.5 + 0.6);
+    \node[above, black] at (\x, 1.5 + 0.6) {\bfseries \label}; 
+  }
+
+\end{tikzpicture}
+\caption{An example of two allocations, where there is enough room to borrow time for the larger one.}
+\end{minipage}\hfill
+\begin{minipage}{0.45\textwidth}
+\centering
+\begin{tikzpicture}[>=Latex, font=\large, scale=0.5, transform shape]
+
+  \foreach \x in {0, 6, 2*6} {
+    \fill[gray!20] (\x - 1.2/2, -0.6) rectangle (\x + 1.2/2, 1.5 + 0.6);
+  }
+
+  \draw[thick, fill=white] (-.6, 0) rectangle (6 + 0.5, 1.5);
+  
+  \draw[thick, fill=white] (6 - 0.5, 0) rectangle (2*6 + 1.2/2, 1.5);
+
+  \draw[pattern=north east lines, pattern color=black] (6 - 0.5, 0) rectangle (6 + 0.5, 1.5);
+
+  \foreach \x/\label in {0/{$T-1$}, 6/{$T$}, 2*6/{$T+1$}} {
+    \draw[very thick] (\x, -0.6) -- (\x, 1.5 + 0.6);
+    \node[above, black] at (\x, 1.5 + 0.6) {\bfseries \label};
+  }
+
+\end{tikzpicture}
+\caption{An example of two allocations, where there is not enough room as both require borrowing, causing an overlap.}
+\end{minipage}
+
+\end{figure}
+
 \chapter{State of the Art Analysis}
 \label{ch:sota}
 
@@ -312,7 +360,7 @@ Standard NLP models map a finite set of words to static vectors. Since product v
 
 To resolve this, the implementation utilizes a custom \textit{ObjectEmbedding} layer. The discrete station identifier is mapped via a standard lookup table, while the size value is projected through a linear layer. These two feature sets are concatenated to form the input vector:
 \begin{equation}
-E_{input} = \text{Concat}(\text{Embedding}(ID), \text{Linear}(Size))
+E_{input} = \text{Concat}(\text{Embedding}(ID), \text{Linear}(Size)) %TODO: dubbelkolla
 \end{equation}
 This allows the attention mechanism to process the semantic identity of the station, enabling the model to generalize to unseen product sizes without expanding the vocabulary.
 
@@ -322,7 +370,7 @@ To strictly prevent the common issue of repeting tokens in generative language m
 
 The Transformer is configured as a standalone Encoder, serving purely as a regressor to predict the offsets of each station. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the Transformer's predictions to minimize a conflict cost matrix:
 \begin{equation}
-\text{Cost}_{ij} = \sum (\max(0, | \text{Drift}_i | + | \text{Drift}_j | - \text{Limit}))^2
+\text{Cost}_{ij} = \sum (\max(0, | \text{Drift}_i | + | \text{Drift}_j | - \text{Limit}))^2 %TODO: dubbelkolla
 \end{equation}
 
 By using the Transformer solely for feature extraction, and delegating the sorting logic to mathematics, the system ensures that the output is always a valid permutation of the input, which will guarantuee that no items become duplicated or omitted.
@@ -349,32 +397,196 @@ For data generation the following constants were used:
         \bottomrule
     \end{tabular}
 \end{table}
+\subsection{Abstracting the Data}
+For ease of training, the training data has been essentially stripped down to its three most relevant components, \textit{object\_id}, \textit{[data]}, \textit{[offsets]}, where object\_id is the identifier, and data \& offsets are arrays containing the time requirements for each station labeled $s1$, $s2$, \dots :
 
 \subsection{Offset Calculation and Centering}
-The positioning of an object within a station is determined by its \textit{offset} relative to the \textbf{Takt} start. The script employs a centering logic to ensure that tasks are placed as close to the middle of the available window as possible, minimizing the risk of drift violations.
+The positioning of an object within a station is determined by its \textit{offset} relative to the \textbf{Takt} start ($0$ locally). The script employs a dynamic centering logic that positions tasks within the remaining available capacity of the standard Takt window. This approach balances the empty space (or buffer) on either side of the allocation, adapting to the finish time of the preceding task.
 
-The calculation of the left-hand boundary offset, $O_{left}$, is defined as:
-\begin{equation}
-    O_{left} = L_{slot} - (T \times C_{min})
-\end{equation}
-Where $L_{slot}$ is the leftmost available time slot and $T \times C_{min}$ represents the theoretical start of the takt.
+To determine the position, the script first calculates the local start time, $t_{start}$, which corresponds to the completion of the previous allocation relative to the current Takt. The remaining buffer, $B$, is calculated as the difference between the standard Takt duration $T$ and the occupied time, clamped to zero to ensure non-negative spacing:
 
-To determine the ideal centered position, the script first calculates the remaining buffer on the right, $O_{right}$:
 \begin{equation}
-    O_{right} = C_{min} + D_{area} - O_{left} - S_{new}
-\end{equation}
-Where $D_{area}$ is the drift area and $S_{new}$ is the duration of the task at the station. The final offset, $O$, is then calculated by attempting to center the task within these boundaries:
-\begin{equation}
-    O_{raw} = O_{left} + \frac{O_{right}}{2}
+    B = \max(0, T - t_{start} - S)
 \end{equation}
 
-Finally, to ensure the object remains within physical station boundaries, the raw offset is clamped within the permissible drift range so that 
+Where $S$ is the size (duration) of the new task. The tentative offset, $O_{calc}$, is then derived by placing the task at the start position plus half of the calculated buffer:
+
 \begin{equation}
-    Offset = -D \leq 0 \leq (T + D - S)
+    O_{calc} = t_{start} + \frac{B}{2}
+\end{equation}
+
+This formula ensures that if the previous task finishes early, the new task is centered in the wide gap; if the previous task finishes late, the buffer shrinks, effectively pulling the new task closer to the previous one.
+
+Finally, to ensure the object adheres to physical station boundaries and drift limitations ($D$), the calculated offset is clamped. The maximum permissible offset is defined such that the task end does not exceed the drift limit ($T+D$):
+
+\begin{equation}
+    O_{calc} = \max(-D, \min(O_{calc}, T + D - S))
     \label{eq:offset_constraint}
 \end{equation}
 
+\begin{figure}[htbp]
+\centering
+
+\begin{minipage}{0.48\textwidth}
+\centering
+\begin{tikzpicture}[>=Latex, scale=0.85, transform shape]
+
+  \fill[gray!20] (-1.2, -0.5) rectangle (0, 2);
+
+  \fill[gray!20] (5, -0.5) rectangle (6.2, 2);
+
+  \draw[draw, fill=white] (-0.3,0) rectangle (4.5, 1.5) node[pos=.5] {Allocation};
+
+  \draw[thick] (-0.6, -0.5) -- (-0.6, 2);
+  \draw[thick] (5.6, -0.5) -- (5.6, 2);
+
+  \node[above] at (-0.6, 2) {$T$};
+  \node[above] at (5.6, 2) {$T+1$};
+
+  \draw[|-|] (-0.3, 1.8) -- (4.5, 1.8) node[midway, above] {$S$};
+
+  \draw[|-|] (-0.6, -0.7) -- (-0.3, -0.7) node[midway, below] {$O$};
+
+  \draw[|-|] (4.5, -0.7) -- (6.2, -0.7) node[midway, below] {$O + T - S$};
+
+\end{tikzpicture}
+    \caption{Allocation positioning before the centering process (FIXME)}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\begin{tikzpicture}[>=Latex, scale=0.85, transform shape]
+
+  \fill[gray!20] (-1.2, -0.5) rectangle (0, 2);
+
+  \fill[gray!20] (5, -0.5) rectangle (6.2, 2);
+
+  \draw[draw, fill=white] (0.1,0) rectangle (4.9, 1.5) node[pos=.5] {Allocation};
+
+  \draw[thick] (-0.6, -0.5) -- (-0.6, 2);
+  \draw[thick] (5.6, -0.5) -- (5.6, 2);
+
+  \node[above] at (-0.6, 2) {$T$};
+  \node[above] at (5.6, 2) {$T+1$};
+
+  \draw[|-|] (-0.6, -0.7) -- (0.1, -0.7) node[midway, below] {$O_{calc}$};
+
+\end{tikzpicture}
+\caption{Allocation after centering.}
+\end{minipage}
+
+\end{figure}
+
+\subsection{Constructive Data Generation as a Solved Puzzle}
+
+To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than randomly placing tasks and checking for validity, the system employs a constructive generation algorithm. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training.
+
+\subsubsection*{Dependency-Based Positioning}
+The placement of any given allocation $A_{i,j}$ (Object $i$ at Station $j$) is not independent. It is strictly constrained by two spatial-temporal boundaries derived from the existing grid state:
+\begin{enumerate}
+    \item \textbf{Station Availability:} The station $j$ must be free. Therefore, $A_{i,j}$ cannot start until the previous object $i-1$ has departed station $j$.
+    \item \textbf{Object Availability:} The object $i$ must be ready. Therefore, $A_{i,j}$ cannot start until object $i$ has finished processing at the previous station $j-1$.
+\end{enumerate}
+
+Mathematically, the earliest valid start time ($t_{start}$) for the new allocation is defined as the maximum of these two completion timestamps, plus a configured safety gap:
+
+\begin{equation}
+    t_{start} = \max(End_{i-1, j}, \quad End_{i, j-1}) + Gap
+\end{equation}
+
+This logic ensures that the generated schedule is causally valid—no object effectively "teleports" between stations, and no two objects overlap on a single station.
+
+\subsubsection*{Context-Aware Scaling}
+The dimensions of the tasks are also generated dependently. While a desired duration is chosen stochastically, the actual assigned size ($S$) is clamped by the remaining available time in the Takt window. The generator calculates the available space between the calculated $t_{start}$ and the maximum drift boundary. If the random size exceeds this space, it is truncated to fit.
+
+This process results in a dataset where every input (the sequence of objects) has a perfectly matching output (the offsets and sizes) that is guaranteed to be solvable, providing a robust target for supervised learning.
+
 (FIXME)
+
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \begin{tikzpicture}[>=Latex, font=\small, scale=0.8, transform shape]
+
+        \fill[pattern=north east lines, pattern color=gray] (-2.5, 2.0) rectangle (2.5, 3.5);
+        \fill[pattern=north east lines, pattern color=gray] (-2.5, 0) rectangle (2.5, 1.5);
+        \draw[gray!50] (-2.5, 2.0) -- (6, 2.0);
+        \draw[gray!50] (-2.5, 3.5) -- (6, 3.5);
+          
+        \draw[gray!50] (-2.5, 0) -- (6, 0);
+        \draw[gray!50] (-2.5, 1.5) -- (6, 1.5);
+
+        % Added Station Labels
+        \node[right] at (6, 2.75) {$S_{n-1}$};
+        \node[right] at (6, 0.75) {$S_{n}$};
+
+        \draw[thick] (0, -0.2) -- (0, 3.7);
+        \node[above] at (0, 3.7) {$T$};
+        \draw[fill=white, draw=black] (-2.2, 2.2) rectangle (1.5, 3.3);
+
+        \draw[thick, dashed, darkgray] (1.5, 2.2) -- (1.5, -0.6);
+        \node[below] at (1.5, -0.6) {$t_{1}$};
+
+        \draw[fill=gray!60, draw=black] (-2.2, 0.2) rectangle (0.5, 1.3);
+
+        \draw[thick, dashed, darkgray] (0.5, 0.2) -- (0.5, -0.6);
+        \node[below] at (0.5, -0.6) {$t_{2}$};
+         
+        \draw[fill=white, draw=black, thick] (1.8, 0.2) rectangle (5.5, 1.3);
+        \fill[white] (5.2, 0.22) rectangle (5.5, 1.28);
+         
+        \node[font=\bfseries] at (3.65, 0.75) {};
+
+        \draw[->, thick, black] (1.5, 0.75) -- (1.8, 0.75);
+        \draw[dotted, thick] (1.8, 0) -- (1.8, 1.5);
+        \node[below] at (2.1, -0.1) {$t_{start}$};
+
+    \end{tikzpicture}
+    \caption{Case 1}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \begin{tikzpicture}[>=Latex, font=\small, scale=0.8, transform shape]
+
+        \fill[pattern=north east lines, pattern color=gray] (-2.5, 2.0) rectangle (2.5, 3.5);
+        \fill[pattern=north east lines, pattern color=gray] (-2.5, 0) rectangle (2.5, 1.5);
+        \draw[gray!50] (-2.5, 2.0) -- (6, 2.0);
+        \draw[gray!50] (-2.5, 3.5) -- (6, 3.5);
+          
+        \draw[gray!50] (-2.5, 0) -- (6, 0);
+        \draw[gray!50] (-2.5, 1.5) -- (6, 1.5);
+
+        % Added Station Labels
+        \node[right] at (6, 2.75) {$S_{n-1}$};
+        \node[right] at (6, 0.75) {$S_{n}$};
+
+        \draw[thick] (0, -0.2) -- (0, 3.7);
+        \node[above] at (0, 3.7) {$T$};
+        \draw[fill=white, draw=black] (-2.2, 2.2) rectangle (0.5, 3.3);
+
+
+        \draw[fill=gray!60, draw=black] (-2.2, 0.2) rectangle (1.6, 1.3);
+          
+        \draw[fill=white, draw=black, thick] (1.8, 0.2) rectangle (5.5, 1.3);
+        \fill[white] (5.2, 0.22) rectangle (5.5, 1.28);
+          
+        \node[font=\bfseries] at (3.65, 0.75) {};
+
+        \draw[thick, dashed, darkgray] (.5, 2.2) -- (.5, -0.6);
+        \node[below] at (.5, -0.6) {$t_{1}$};
+
+        \draw[thick, dashed, darkgray] (1.6, 0.2) -- (1.6, -0.6);
+        \node[below] at (1.6, -0.6) {$t_{2}$};
+
+        \draw[->, thick, black] (1.5, 0.75) -- (1.8, 0.75);
+        \draw[dotted, thick] (1.8, 0) -- (1.8, 1.5);
+        \node[below] at (2.1, -0.1) {$t_{start}$};
+
+    \end{tikzpicture}
+    \caption{Case 2}
+\end{minipage}
+\end{figure}
 
 \section{Machine Learning Models}
 
