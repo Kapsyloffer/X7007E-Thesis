@@ -344,11 +344,38 @@ For data generation the following constants were used:
         Stations   & 35      & Number of stations \\
         Takt       & 700     & The cycle time ($Cmin$) \\
         Drift      & 200     & The size of the drift area ($Cmin$) \\
-        Gap        & 5       & Minimum buffer distance between objects \\
+        Gap        & 10       & Minimum buffer distance between objects \\
         Multiplier & 500     & Constant value to multiply \textit{Objects} with \\
         \bottomrule
     \end{tabular}
 \end{table}
+
+\subsection{Offset Calculation and Centering}
+The positioning of an object within a station is determined by its \textit{offset} relative to the \textbf{Takt} start. The script employs a centering logic to ensure that tasks are placed as close to the middle of the available window as possible, minimizing the risk of drift violations.
+
+The calculation of the left-hand boundary offset, $O_{left}$, is defined as:
+\begin{equation}
+    O_{left} = L_{slot} - (T \times C_{min})
+\end{equation}
+Where $L_{slot}$ is the leftmost available time slot and $T \times C_{min}$ represents the theoretical start of the takt.
+
+To determine the ideal centered position, the script first calculates the remaining buffer on the right, $O_{right}$:
+\begin{equation}
+    O_{right} = C_{min} + D_{area} - O_{left} - S_{new}
+\end{equation}
+Where $D_{area}$ is the drift area and $S_{new}$ is the duration of the task at the station. The final offset, $O$, is then calculated by attempting to center the task within these boundaries:
+\begin{equation}
+    O_{raw} = O_{left} + \frac{O_{right}}{2}
+\end{equation}
+
+Finally, to ensure the object remains within physical station boundaries, the raw offset is clamped within the permissible drift range so that 
+\begin{equation}
+    Offset = -D \leq 0 \leq (T + D - S)
+    \label{eq:offset_constraint}
+\end{equation}
+
+(FIXME)
+
 \section{Machine Learning Models}
 
 \begin{table}[htbp]
@@ -385,7 +412,7 @@ The architecture utilized in this thesis is heavily based on the Transformer mod
 \subsection{The Configuration}
 
 \subsection{The Application Programming Interface (API)}
-The system exposes its core functionalities through a RESTful API, facilitating programmatic interaction with the implemented neural architectures. This interface serves as the primary gateway for data ingestion and inference execution.
+The system exposes its core functionalities through a RESTful API, facilitating programmatic interaction with the implemented neural architectures. This interface serves as the primary gateway for data ingestion and inference execution. (FIXME)
 
 \subsection{Endpoints}
 
