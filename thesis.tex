@@ -356,7 +356,7 @@ However, certain constraints must be imposed as language models often overproduc
 
 To adapt the Transformer architecture for product sequencing without suffering from the previously mentioned limitations, two specific architectural modifications were implemented:
 
-\subparagraph{Continuous-Discrete Embedding}
+\subsubsection{Continuous-Discrete Embedding}
 Standard NLP models map a finite set of words to static vectors. Since product variations are continuous rather than discrete, a traditional vocabulary approach would require an infinite vocabulary size to capture every possible variation.
 
 To resolve this, the implementation utilizes a custom \textit{ObjectEmbedding} layer. The discrete station identifier is mapped via a standard lookup table, while the size value is projected through a linear layer. These two feature sets are concatenated to form the input vector:
@@ -365,7 +365,7 @@ E_{input} = \text{Concat}(\text{Embedding}(ID), \text{Linear}(Size)) %TODO: dubb
 \end{equation}
 This allows the attention mechanism to process the semantic identity of the station, enabling the model to generalize to unseen product sizes without expanding the vocabulary.
 
-\subparagraph{Decoupling Prediction from Sequencing}
+\subsubsection{Decoupling Prediction from Sequencing}
 \label{subp:decoupling}
 To strictly prevent the common issue of repeting tokens in generative language models, and instead repurpose it for permutation, the sequence generation decoupled from the neural network entirely.
 
@@ -619,13 +619,44 @@ This process results in a dataset where every input (the sequence of objects) ha
 
 The architecture utilized in this thesis is heavily based on the Transformer model proposed by Vaswani et al. \cite{ref5}, with modifications tailored specifically to the Mixed-Model Assembly Line (MMAL) problem, and adapted to function as a cost estimator for the assembly line. For one, the decoder has been decoupled to yield better results (see \ref{subp:decoupling}), and instead of processing text, the model has been fitted with a custom embedding layer which is tasked with reading the size of the work-load within a station, and find a better fit. (FIXME)
 
-\paragraph{Simulated Annealing} While the Transformer predicts the local impact of individual items, the global sequence scheduling is addressed using Simulated Annealing. This method explores the solution space of item permutations, using a cost matrix derived from the Transformer's drift predictions. By allowing for probabilistic acceptance of sub-optimal transitions Simulated Annealing avoids local optima that typically constrain greedy algorithms, resulting in a more stable assembly line schedule. (FIXME)
+\subsubsection{Simulated Annealing} While the Transformer predicts the local impact of individual items, the global sequence scheduling is addressed using Simulated Annealing. This method explores the solution space of item permutations, using a cost matrix derived from the Transformer's drift predictions. By allowing for probabilistic acceptance of sub-optimal transitions Simulated Annealing avoids local optima that typically constrain greedy algorithms, resulting in a more stable assembly line schedule. (FIXME)
+
+
+\subsubsection{Unhooking the decoder}
+While testing the feasibility of the transformer model, I found that it yielded better results by switching to a BERT-like model rather than a Sequence-to-Sequence based approach. (FIXME)
+
 
 \subsection{The Pointer Network Model}
-(FIXME)
+The proposed solution implements a Pointer Network architecture using the PyTorch framework. The model essentially follows a standard Encoder-Decoder structure enhanced with a content-based attention mechanism, designed to handle variable-length input sequences and output a permutation of the input indices. (FIXME)
 
-\subsection{The Dataset}
-(FIXME)
+\subsubsection{Encoder Mechanism}
+The encoder processes the input sequence to generate a representation of the initial problem state.
+\begin{enumerate}
+    \item \textbf{Input Projection:} Raw input features are first passed through a projection block consisting of a linear layer, a $tanh$ function, and Layer Normalization. This maps the input dimension to a higher-dimensional latent space ($d_{model}$).
+
+    \item \textbf{Bidirectional LSTM:} The projected features are fed into a Bi-directional LSTM. This allows the model to capture context from both past and future states in any given sequence. The final hidden states of the forward and backward passes are combined to form the initial context for the decoder.
+\end{enumerate}
+
+\subsubsection{Decoder and Attention Mechanism}
+The decoder generates the output sequence one item at a time. Unlike standard NLP models that generate new tokens from a fixed vocabulary, this decoder selects indices from the input sequence.
+\begin{itemize}
+    \item \textbf{State Initialization:} The decoder's initial hidden and cell states are initialized by projecting the final concatenated states of the encoder through learnable linear "bridge" layers.
+    \item \textbf{Glimpse Mechanism:} To improve the the attention mechanism, the model employs a "glimpse" step. At every time step, the decoder's current state queries the encoder outputs to calculate a context vector. This vector summarizes the most relevant parts of the input sequence for the current step.
+    \item \textbf{Pointer Selection:} The final selection is performed by a second attention layer. This layer combines the decoder's current state with the context vector from the glimpse step to compute a probability distribution over the input elements. The element with the highest probability is selected as the next index in the sequence.
+\end{itemize}
+
+\subsubsection{Masking and Inference}
+To ensure the validity of the resulting permutation, a masking mechanism is applied during inference. Once an input index is selected, it is masked out by setting its log-probability to $-\infty$, this will prevent the model from selecting the same element twice. The selected element's embedding is then used as the input for the next decoder time step.
+
+\subsubsection{The Dataset}
+To enable the Pointer Network to process the production schedules, the raw JSON data is transformed into structured numerical tensors through a custom preprocessing pipeline. This pipeline is responsible for extracting the relevant features from each object, normalizing the station processing times, and organizing the sequences into batches for efficient model training. (FIXME)
+\begin{itemize}
+    \item \textbf{Tensor Representation} \\
+    Each input sequence is converted into a numerical tensor of shape $(L, N)$, where $L$ denotes the sequence length (number of objects) and $N$ corresponds to the normalized processing times for each station ($S_1$, \dots, $S_N$). For batch processing on the GPU, these tensors are padded to a uniform length $L_{max}$ and stacked, resulting in a final input structure of dimensions $(B, L_{max}, N)$, where $B$ represents the batch size.
+
+    \item \textbf{Propagation and Usage} \\
+    Upon entering the Pointer Network, this raw feature tensor is first processed by the \textit{Projector} module. A linear layer expands the input dimension $S$ into a higher-dimensional latent representation ($d_{model}$). This projected embedding is subsequently passed through a \texttt{Tanh} activation and \texttt{LayerNorm} before being consumed by the Bidirectional LSTM encoder, which generates the context-aware hidden states required for the attention mechanism.
+\end{itemize}
 
 \subsection{The Training Loop}
 (FIXME), (see \ref{chap:workarounds})
@@ -636,100 +667,300 @@ The system exposes its core functionalities through a RESTful API, facilitating 
 
 \subsection{Endpoints}
 
-\paragraph{/run/\{model\_type\}}
+\subsubsection{/run/\{model\_type\}}
 
 This POST endpoint provides a unified interface for sequence processing across different model architectures (\textbf{Transformer}, \textbf{Pointer Network}, or \textbf{Seq2Seq}). Once selected it returns a processed sequence made from the input data, including refitting. 
 
-\paragraph{/run/\{model\_type\}/$int:n$/}
+\subsubsection{/run/\{model\_type\}/$int:n$/}
 
 This POST endpoint is the same as the one above it, but it accepts an integer $n$, which runs the model $n$ times and returns $n$ suggested sequences. (FIXME)
 
 
-\paragraph{/check/}
+\subsubsection{/check/}
 
 This POST endpoint will count the number of \textbf{overlaps} on a given sequence, based on configuration data. 
 
 
 \chapter{Experiments and results}
-\section{The Transformer Model}
-\subsection{Unhooking the decoder}
-While testing the feasibility of the transformer model, I found that it yielded better results by switching to a BERT-like model rather than a Sequence-to-Sequence based approach. 
+\section{Task Performance}
+Performance is measured by how well the model can take an input with overlapping data and rearrange the tasks to minimize overlaps. The reduction metric is defined at \ref{sec:eval}.
 
-\subsection{Task Performance}
-\begin{table}[htbp]
+Although the operational constraints of the target problem typically limit sequences to batches of roughly 100 objects, the following results also evaluate the model's scalability beyond this range.
+
+\subsection{Pointer Network Performance}
+
+\begin{table}[H]
     \centering
-    \caption{Comparison model performance in overlap reduction for $S$ = $e^3$ (TODO)}
-    \label{tab:overlap_results}
-    \begin{tabular}{l c c}
-        \toprule
-        \textbf{Training Size} & \textbf{Overlap Ratio ($R$)} & \textbf{} \\
-        \midrule
-        $1e^3$ & 0.45 & 110 \\
-        $1e^6$ & 0.62 & 125 \\
-        $1e^9$ & 0.78 & 140 \\
-        $1e^{12}$ & \textbf{0.85} & 138 \\
-        \bottomrule
-    \end{tabular}
-    \centering
-    \caption{Comparison model performance in overlap reduction for $S$ = $e^6$ (TODO)}
-    \label{tab:overlap_results}
-    \begin{tabular}{l c c}
-        \toprule
-        \textbf{Training Size} & \textbf{Overlap Ratio ($R$)} & \textbf{} \\
-        \midrule
-        $1e^3$ & 0.45 & 110 \\
-        $1e^6$ & 0.62 & 125 \\
-        $1e^9$ & 0.78 & 140 \\
-        $1e^{12}$ & \textbf{0.85} & 138 \\
-        \bottomrule
-    \end{tabular}
-    \centering
-    \caption{Comparison model performance in overlap reduction for $S$ = $e^9$ (TODO)}
-    \label{tab:overlap_results}
-    \begin{tabular}{l c c}
-        \toprule
-        \textbf{Training Size} & \textbf{Overlap Ratio ($R$)} & \textbf{} \\
-        \midrule
-        $1e^3$ & 0.45 & 110 \\
-        $1e^6$ & 0.62 & 125 \\
-        $1e^9$ & 0.78 & 140 \\
-        $1e^{12}$ & \textbf{0.85} & 138 \\
-        \bottomrule
-    \end{tabular}
+    \small 
+
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $10$}
+        \label{tab:res_10}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $1/25$ & $96\%$ \\
+            Run \#2 & $0/34$ & $100\%$ \\
+            Run \#3 & $2/20$ & $90\%$ \\
+            \midrule
+            \textbf{Avg} & & $95.3\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $100$}
+        \label{tab:res_100}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \vspace{0.8cm} 
+
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $1000$ (Run B)}
+        \label{tab:res_100b}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $10000$ (Run C)}
+        \label{tab:res_100c}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
 \end{table}
 
-\section{The Pointer Network}
-\subsection{Adding the offset handler}
-    While the Transformer model used a simulated annealing algorithm for adjusting offsets on runtime, the same idea was applied to the pointer network (See \ref{sec:trans})
+
+\subsection{Transformer Performance}
+
+\begin{table}[H]
+    \centering
+    \small 
+
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $10$ (FIXME)}
+        \label{tab:res_10}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $1/25$ & $96\%$ \\
+            Run \#2 & $0/34$ & $100\%$ \\
+            Run \#3 & $2/20$ & $90\%$ \\
+            \midrule
+            \textbf{Avg} & & $95.3\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $100$ (FIXME)}
+        \label{tab:res_100}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \vspace{0.8cm} 
+
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $1000$ (Run B) (FIXME)}
+        \label{tab:res_100b}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $10000$ (Run C) (FIXME)}
+        \label{tab:res_100c}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+\end{table}
+
+
+\subsection{Seq2Seq performance}
+
+\begin{table}[H]
+    \centering
+    \small 
+
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $10$ (FIXME)}
+        \label{tab:res_10}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $1/25$ & $96\%$ \\
+            Run \#2 & $0/34$ & $100\%$ \\
+            Run \#3 & $2/20$ & $90\%$ \\
+            \midrule
+            \textbf{Avg} & & $95.3\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $100$ (FIXME)}
+        \label{tab:res_100}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \vspace{0.8cm} 
+
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $1000$ (Run B) (FIXME)}
+        \label{tab:res_100b}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \caption{Test-size of $10000$ (Run C) (FIXME)}
+        \label{tab:res_100c}
+        \begin{tabular}{l c c}
+            \toprule
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \midrule
+            Run \#1 & $83/367$ & $77.4\%$ \\
+            Run \#2 & $75/346$ & $78.3\%$ \\
+            Run \#3 & $64/340$ & $81.2\%$ \\
+            \midrule
+            \textbf{Avg} & & $79.0\%$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+\end{table}
+
 
 \section{Dataset}
 We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a dummy dataset was generated for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is trained on "harder" sequences.
 
 
 \section{Evaluation Metrics}
+\label{sec:eval}
 To objectively measure the performance of the model, we monitor performance of the models in overlap reduction (see \ref{chap:overlap}) using a simple ratio.
 \begin{equation}
     \text{ratio} = \frac{O_{predicted}}{O_{source}}
 \end{equation}
 where $O_{source}$ is the total number of overlaps of the shuffled input sequence, and $O_{predicted}$ is the total number of overlaps of the predicted sequence. The closer to $0$ it gets, the better it performs, and if it goes above $1$ we're yielding worse results than before.
 
-\section{Hardware Limitations}
-    While training the models on a larger set of data (as Transformers generally perform better with more training data) I ran out of available memory so the size of the training data had to be restricted to 500,000 objects at most.
 
+\section{Model tweaks}
+\subsection{Pointer Network}
+\subsubsection{Adding the offset handler}
+    While the Transformer model used a simulated annealing algorithm for adjusting offsets on runtime, the same idea was applied to the pointer network (See \ref{sec:trans}) (FIXME)
 
 \chapter{Discussion}
 \section{Interpretation of Results}
-    I think I did good. (FIXME)
+
+    The results show that the implemented models performed within expectations, with the Pointer Network performing the best for our permutation-based task.
+
+    This difference in performance highlights why choosing the right architecture matters. While a Transformer could theoretically solve the task given enough data and processing power, the Pointer Network proved to be a better fit for this optimization problem. This is in part because the Transformer was originally designed for Natural Language Processing \cite{ref5}, whereas the Pointer Network was specifically introduced to handle combinatorial problems where the output is a permutation of the input—most notably the Traveling Salesman Problem. \cite{ref7}
+
+
+While the Transformer model could potentially yield improved results through extensive optimization and a larger training set, the computational cost may not be worth the marginal gains. Given that the core objective of this thesis essentially was permutational reordering of fixed time slots, then the Pointer Network is more theoretically aligned with the problem space. The Transformer's generative versatility offers no distinct advantage in this specific context, particularly as the Pointer Network similarly utilizes an attention mechanism to effectively solve these combinatorial constraints.
+
+
 \section{Limitations}
-    The data was bad, we're cooked. (FIXME)
+\subsection{Hardware and Resource Limitations}
+    While training the models on a larger set of data (as Transformers generally perform better with more training data) I ran out of available memory so the size of the training data had to be restricted to 500,000 objects at most, while Machine Learning models should in actuality contain millions of training objects. A reason for this could be how the data itself is parsed, and the bottleneck could lie in there. (FIXME)
+
+    Even though Transformer-based architectures generally demonstrate improved generalization with larger datasets, the training size in this study had to be restricted to $500,000$ due to hardware memory constraints. This could have greatly impaced the performance, and feasibility of the Transformer model in this thesis. Preliminary analysis suggests that this bottleneck may stem from the current data parsing implementation, which could be optimized in future work to allow for larger batch sizes and more extensive training sets.
+
 \section{Future Work}
-    Do again with good data and a million GPUs. (FIXME)
+    Future iterations of this research should prioritize larger datasets and utilize high performance computing clusters to overcome the memory bottlenecks encountered in this study. (FIXME)
 
 
 \begin{thebibliography}{99}
-\bibitem{ref1}
-J. Abbasi, \textit{Predictive Maintenance in Industrial Machinery using Machine Learning}, 
-Master’s thesis, Luleå University of Technology, Department of Computer Science, Electrical and Space Engineering, 2021.
 \bibitem{ref2}
 A. Dupuis, C. Dadouchi, and B. Agard, 
         \textit{A decision support system for sequencing production in the manufacturing industry},
@@ -738,7 +969,7 @@ A. Dupuis, C. Dadouchi, and B. Agard,
     \textit{Understand and Utilise Unformatted Text Documents by Natural Language Processing Algorithms}, 
     Master’s thesis, Mid Sweden University, Department of Information and Communication Systems (IST), Spring 2017.
 \bibitem{ref4} I. Pointer,
-\textit{Programming PyTorch for Deep Learning, ISBN: I pointer deep learning},
+    \textit{Programming PyTorch for Deep Learning, ISBN: 9781492045359},
 O'Reilly Media, 2019.
 \bibitem{ref5} 
 A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, 
