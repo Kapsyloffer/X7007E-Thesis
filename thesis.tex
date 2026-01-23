@@ -171,7 +171,11 @@ Jump-out, on the other hand, can be considered an $O(1)$ problem, though it pres
 \section{Defining Overlaps}
 \label{chap:overlap}
 
-Overlaps in this case arise from timing dependencies: each item’s progress depends on how long it takes to process at its respective station. If two items are processed consecutively at station $s_n$, and both of those items require additional time from its neighbouring stations $s_{n-1}$ and $s_{n+1}$ there will not be sufficient time for all operations to complete. This results in what's visualized as an overlap. In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow these operations to complete before production may continue.
+Overlaps stem from timing dependencies: each item’s "size" on a station $S_n$ depends on how long it takes for the item to process at the station. In other words, the "size" of the task is the duration of the task relative the duration of the station. If a task exceeds \textbf{Takt} in duration, then the use of the drift area is mandatory. 
+
+However, if two items are processed consecutively at station $S_n$, and both of those items exceed \textbf{Takt} in $S_n$ to the point of requiring the usage of both of its neighbouring stations ($S_{n-1}$ and $S_{n+1}$), then there \textit{will} not be sufficient time for all operations to complete if both of those objects need to borrow time. These conflicting dependencies result in what's visualized as (and defined in theis thesis as) an overlap, there simply isn't enough time for assembly to finish in time.
+
+In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow the operation to complete before the assembly line may continue again.
 
 
 \begin{figure}[htbp]
@@ -731,15 +735,15 @@ Although the operational constraints of the target problem typically limit seque
 
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $1000$ (Run B)}
+        \caption{Test-size of $1000$}
         \label{tab:res_100b}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $1121/5530$ & $79.73\%$ \\
+            Run \#2 & $1128/5392$ & $79.08\%$ \\
+            Run \#3 & $1233/5513$ & $77.63\%$ \\
             \midrule
             \textbf{Avg} & & $79.0\%$ \\
             \bottomrule
@@ -748,17 +752,17 @@ Although the operational constraints of the target problem typically limit seque
     \hfill
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $10000$ (Run C)}
+        \caption{Test-size of $10000$}
         \label{tab:res_100c}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $11519/54162$ & $78.73\%$ \\
+            Run \#2 & $11544/54419$ & $78.79\%$ \\
+            Run \#3 & $11605/55066$ & $78.93\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $78.82\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
