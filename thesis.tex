@@ -621,29 +621,64 @@ This process results in a dataset where every input (the sequence of objects) ha
     \end{tabular}
 \end{table}
 
-\subsection{The Transformer Model}
+\subsection{The Transformer Model (FIXME)}
 \label{sec:trans}
 
-The architecture utilized in this thesis is heavily based on the canonical Transformer model proposed by Vaswani et al. \cite{ref5}, with significant modifications tailored specifically to the Mixed-Model Assembly Line (MMAL) problem, and adapted to function as a cost estimator for the assembly line. For one, the decoder has been decoupled to yield better results (see \ref{subp:decoupling}), and instead of processing text, the model has been fitted with a custom embedding layer which is tasked with reading the size of the work-load within a station, and find a better fit.
+The architecture utilized in this thesis is derived from the canonical Transformer model proposed by Vaswani et al. \cite{ref5}, but includes significant modifications tailored to the Mixed-Model Assembly Line (MMAL) problem. Unlike standard NLP implementations that process tokenized text, this model treats the assembly line as a sequence of station-workload pairs. 
 
-\subsubsection{Simulated Annealing} While the Transformer predicts the local impact of individual items, the global sequence scheduling is addressed using Simulated Annealing. This method explores the solution space of item permutations, using a cost matrix derived from the Transformer's drift predictions. By allowing for probabilistic acceptance of sub-optimal transitions Simulated Annealing avoids local optima that typically constrain greedy algorithms, resulting in a more stable assembly line schedule. 
+To handle this multi-modal input, the model is fitted with a custom \textit{Object Embedding} layer. As defined in the system implementation, this layer fuses categorical data with continuous variables: the station index is mapped to a learnable embedding vector of size $d_{model}/2$, while the continuous workload size is projected via a linear layer to match this dimension. These two representations are concatenated and summed with sinusoidal positional encodings, allowing the model to interpret both the magnitude of the work and its sequential position in the line.
+
+\subsubsection{Encoder-Only Regression}
+\label{subp:decoupling}
+During preliminary feasibility testing, empirical results indicated that a standard Sequence-to-Sequence (Encoder-Decoder) framework was ill-suited for the regression nature of cost estimation. Consequently, the architecture was simplified to an Encoder-only configuration, conceptually similar to BERT. \cite{ref12}
+
+In the inference pipeline, the decoder is bypassed entirely. The input sequence is processed solely by the Encoder stack to generate contextual representations, which are then passed directly to a linear projection layer. This layer outputs a scalar value for each station, representing the predicted drift offset, rather than generating a probability distribution over a vocabulary.
+
+\subsubsection{Simulated Annealing and Cost Logic} 
+While the Transformer predicts the local drift impact of individual items, the global sequence scheduling is optimized using Simulated Annealing. This method explores the solution space of item permutations to minimize line stoppage risks.
+
+The optimization relies on a specialized cost matrix derived from the Transformer's predictions. The cost between two products, $A$ and $B$, is calculated using a "slack centering" heuristic. The system simulates the placement of product $B$ relative to product $A$ such that $B$ is centered within the available slack time, calculated as:
+$$
+\text{Offset}_B \approx \frac{\text{Offset}_A + \text{Size}_A - \text{Size}_B}{2}
+$$
+A penalty is incurred only if this simulated position violates the drift boundaries (defined as $[-Drift, Takt + Drift]$). To aggressively discourage valid-but-risky sequences, these violations are penalized quadratically ($violation^2$). By allowing for probabilistic acceptance of sub-optimal transitions, Simulated Annealing avoids the local optima that typically constrain greedy algorithms, resulting in a robust assembly line schedule.
 
 
-\subsubsection{Unhooking the decoder}
-During preliminary feasibility testing, empirical results indicated that a standard Sequence-to-Sequence (Encoder-Decoder) framework was ill-suited for the regression nature of the cost estimation task. Consequently, the architecture was simplified to an Encoder-only configuration, conceptually similar to BERT. This modification eliminates the autoregressive generation step, allowing the model to focus entirely on learning bidirectional contextual representations of the station workload.
 
-
-
-\subsection{The Sequence-to-Sequence Model}
+\subsection{The Sequence-to-Sequence Model (FIXME)}
 \label{sec:seq}
 
-TODO 
+To establish a baseline for performance, we implemented a standard Sequence-to-Sequence (Seq2Seq) architecture tailored for regression. Unlike the Transformer approach which focuses on global context via self-attention, this model relies on Recurrent Neural Networks (RNNs) to process the station workload sequentially. The model operates as a "cost estimator," predicting the cumulative offset for a given sequence of stations, which is subsequently optimized using Simulated Annealing, as employed by the Transformer.
 
-\subsubsection{Simulated Annealing} Similar to the Transformer model this too uses Simulated Annealing.
+\subsubsection{Feature Representation}
+Before entering the recurrent layers, the raw station data is processed to combine categorical identities with continuous workload values. As defined in the wrapper implementation:
+\begin{itemize}
+    \item \textbf{Station Embedding:} The discrete station indices are passed through a learned embedding layer to capture latent station characteristics.
+    \item \textbf{Size Projection:} The continuous size values (workload) are projected through a linear layer to match the embedding dimension.
+    \item \textbf{Fusion:} These two feature sets are concatenated and passed through a projection layer to form the final input vector $x_t$ of dimension $d_{model}$.
+\end{itemize}
 
+\subsubsection{Encoder-Decoder Architecture}
+The core architecture consists of two Long Short-Term Memory (LSTM) networks:
+\begin{itemize}
+    \item \textbf{Encoder:} The encoder processes the input sequence $X = \{x_1, \dots, x_T\}$ and produces a sequence of hidden states $H = \{h_1, \dots, h_T\}$. It captures the temporal dependencies of the assembly line workload.
+    \item \textbf{Decoder:} The decoder operates autoregressively. At each time step $t$, it predicts the drift value based on its previous hidden state, the previous output, and a context vector $c_t$ derived from the encoder's output.
+\end{itemize}
 
-\subsubsection{Unhooking the decoder}
-FIXME
+\subsubsection{Attention Mechanism}
+To mitigate the information bottleneck inherent in fixed-length vector encoding, the model utilizes an additive attention mechanism (Bahdanau Attention). For a decoder hidden state $s_{t-1}$ and encoder hidden states $h_j$, the attention energy $e_{tj}$ is calculated as:
+\begin{equation}
+    e_{tj} = v^T \tanh(W [s_{t-1}; h_j])
+\end{equation}
+where $W$ and $v$ are learnable parameters. These scores are normalized via softmax to produce attention weights $\alpha_{tj}$, which are used to compute the context vector $c_t$:
+\begin{equation}
+    c_t = \sum_{j=1}^{T} \alpha_{tj} h_j
+\end{equation}
+This context vector allows the decoder to "focus" on specific stations in the input sequence that are most relevant for predicting the current drift value.
+
+\subsubsection{Simulated Annealing}
+Like the Transformer, the Seq2Seq model is strictly used to estimate the number of conflicts. The actual optimization is handled by Simulated Annealing. The algorithm repeatedly swaps items in the sequence and uses the model to predict overlaps. It then accepts or rejects these changes based on a cooling schedule to avoid getting stuck in local minima.
+
 
 
 
@@ -854,10 +889,10 @@ Although the operational constraints of the target problem typically limit seque
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
             Run \#1 & $54216/54886$ & $1.22\%$ \\
-            Run \#2 & $ $ & $\%$ \\
-            Run \#3 & $ $ & $\%$ \\
+            Run \#2 & $62878/62763$ & $-0.18\%$ \\
+            Run \#3 & $62635/62827$ & $0.31\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $0.45\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -872,34 +907,34 @@ Although the operational constraints of the target problem typically limit seque
 
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $10$ (FIXME)}
+        \caption{Test-size of $10$}
         \label{tab:res_10}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $ $ & $\%$ \\
-            Run \#2 & $ $ & $\%$ \\
-            Run \#3 & $ $ & $\%$ \\
+            Run \#1 & $52/58$ & $10.34\%$ \\
+            Run \#2 & $49/60$ & $18.33\%$ \\
+            Run \#3 & $42/51$ & $17.65\%$ \\
             \midrule
-            \textbf{Avg} & & $\%$ \\
+            \textbf{Avg} & & $15.44\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
     \hfill
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $100$ (FIXME)}
+        \caption{Test-size of $100$}
         \label{tab:res_100}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $ $ & $\%$ \\
-            Run \#2 & $ $ & $\%$ \\
-            Run \#3 & $ $ & $\%$ \\
+            Run \#1 & $580/625$ & $7.20\%$ \\
+            Run \#2 & $573/624$ & $8.17\%$ \\
+            Run \#3 & $525/610$ & $13.93\%$ \\
             \midrule
-            \textbf{Avg} & & $\%$ \\
+            \textbf{Avg} & & $9.75\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -908,34 +943,34 @@ Although the operational constraints of the target problem typically limit seque
 
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $1000$ (Run B) (FIXME)}
+        \caption{Test-size of $1000$}
         \label{tab:res_100b}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $ $ & $\%$ \\
-            Run \#2 & $ $ & $\%$ \\
-            Run \#3 & $ $ & $\%$ \\
+            Run \#1 & $5916/6309$ & $6.23\%$ \\
+            Run \#2 & $6024/6342$ & $5.01\%$ \\
+            Run \#3 & $6014/6243$ & $3.67\%$ \\
             \midrule
-            \textbf{Avg} & & $\%$ \\
+            \textbf{Avg} & & $4.97\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
     \hfill
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $10000$ (Run C) (FIXME)}
+        \caption{Test-size of $10000$}
         \label{tab:res_100c}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $ $ & $\%$ \\
-            Run \#2 & $ $ & $\%$ \\
-            Run \#3 & $ $ & $\%$ \\
+            Run \#1 & $62120/62923$ & $1.28\%$ \\
+            Run \#2 & $61836/62674$ & $1.34\%$ \\
+            Run \#3 & $61652/62797$ & $1.82\%$ \\
             \midrule
-            \textbf{Avg} & & $\%$ \\
+            \textbf{Avg} & & $1.44\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -943,7 +978,7 @@ Although the operational constraints of the target problem typically limit seque
 
 
 \section{Dataset}
-We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a dummy dataset was generated for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is trained on "harder" sequences.
+We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better.
 
 
 \section{Evaluation Metrics}
@@ -954,24 +989,14 @@ To objectively measure the performance of the model, we monitor performance of t
 \end{equation}
 where $O_{source}$ is the total number of overlaps of the shuffled input sequence, and $O_{predicted}$ is the total number of overlaps of the predicted sequence. The closer to $0$ it gets, the better it performs, and if it goes above $1$ we're yielding worse results than before.
 
-
-\section{Model tweaks}
-\subsection{Pointer Network}
-\subsubsection{Adding the offset handler}
-    While the Transformer model used a simulated annealing algorithm for adjusting offsets on runtime, the same idea was applied to the pointer network (See \ref{sec:trans}) (FIXME)
-
 \chapter{Discussion}
 \section{Interpretation of Results}
 
-    The results show that the implemented models performed within expectations, with the Pointer Network performing the best for our permutation-based task.
+The results show that the Pointer Network was the only architecture to perform within the target parameters for the task at hand. It consistently achieved an average improvement of $80\%$, significantly outperforming the baselines. In contrast, both the Transformer and standard Sequence-To-Sequence (Seq2Seq) models yielded negligible gains, averaging only a incremental improvement. This performance is comparable to random shuffling, indicating a failure to learn the underlying optimization logic unsupervised.
 
-    This difference in performance highlights why choosing the right architecture matters. While a Transformer could theoretically solve the task given enough data and processing power, the Pointer Network proved to be a better fit for this optimization problem. This is in part because the Transformer was originally designed for Natural Language Processing \cite{ref5}, whereas the Pointer Network was specifically introduced to handle combinatorial problems where the output is a permutation of the input—most notably the Traveling Salesman Problem. \cite{ref7}
+    This difference in performance highlights why choosing the right architecture matters. While a Transformer could theoretically solve the task given enough data and processing power, the Pointer Network proved to be a better fit for this optimization problem. This is in part because the Transformer was originally designed for Natural Language Processing \cite{ref5}, whereas the Pointer Network was specifically introduced to handle combinatorial problems where the output is a permutation of the input—most notably the Traveling Salesman Problem. \cite{ref7} Even though the Pointer Network is based on a Sequence-to-Sequence model, they simply don't compare in terms of performance.
 
-
-While the Transformer model could potentially yield improved results through extensive optimization and a larger training set, the computational cost may not be worth the marginal gains. Given that the core objective of this thesis essentially was permutational reordering of fixed time slots, then the Pointer Network is more theoretically aligned with the problem space. The Transformer's generative versatility offers no distinct advantage in this specific context, particularly as the Pointer Network similarly utilizes an attention mechanism to effectively solve these combinatorial constraints.
-
-% \section{Limitations}
-% \subsection{Hardware and Resource Limitations}
+While the Transformer and Seq2Seq model could potentially yield improved results through extensive optimization and a larger training set, the computational cost may not be worth the marginal gains. Given that the core objective of this thesis essentially was permutational reordering of fixed time slots, then the Pointer Network is more theoretically aligned with the problem space. The Transformer's generative versatility offers no distinct advantage in this specific context, particularly as the Pointer Network similarly utilizes an attention mechanism to effectively solve these combinatorial constraints.
 
 \section{Limitations}
 \subsection{Hardware and Resource Limitations}
@@ -1013,9 +1038,13 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
 
 \bibitem{ref11} T. Mitchell, \textit{Machine Learning}, ISBN, publisher, 1997. (FIXME)
+\bibitem{ref12} J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, 
+    \textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, 
+    Proceedings of NAACL-HLT, 2019.
 \bibitem{refx} Author, Title, Journal, Year.
 \end{thebibliography}
 \end{document}
 
 
 %TODO: Fler modeller, typ 2st till, Transformer, Seq2Seq, PointerNetwork
+%TODO: Kanske generera fasta modeller, 6 axlar, 12, etc. För att se ifall regler kan följas?
