@@ -557,7 +557,7 @@ This process results in a dataset where every input (the sequence of objects) ha
         \node[below] at (2.1, -0.1) {$t_{start}$};
 
     \end{tikzpicture}
-    \caption{Case 1}
+    \caption{Case 1: The white object in $S_{n-1}$ is borrowing time from itself at $S_n$, and thus cannot begin assembly at $S_n$ until it has finished the task at $S_{n-1}$.}
 \end{minipage}\hfill
 \begin{minipage}{0.48\textwidth}
     \centering
@@ -598,7 +598,7 @@ This process results in a dataset where every input (the sequence of objects) ha
         \node[below] at (2.1, -0.1) {$t_{start}$};
 
     \end{tikzpicture}
-    \caption{Case 2}
+    \caption{Case 2: The gray object is borrowing time from the white object in $S_n$. Even though it finished in $S_{n-1}$, the white object cannot begin assembly right away in $S_n$ as it's dependent on the gray object finishing at $S_n$.}
 \end{minipage}
 \end{figure}
 
@@ -615,25 +615,40 @@ This process results in a dataset where every input (the sequence of objects) ha
         batch\_size &  $16$ \\
         num\_epochs & $10$ \\
         lr & $1e^{-4}$ \\
-        d\_model & $512$ \\
+        d\_model & $128$ \\
         dropout & $0.1$ \\
         \bottomrule
     \end{tabular}
 \end{table}
+
 \subsection{The Transformer Model}
 \label{sec:trans}
 
-The architecture utilized in this thesis is heavily based on the Transformer model proposed by Vaswani et al. \cite{ref5}, with modifications tailored specifically to the Mixed-Model Assembly Line (MMAL) problem, and adapted to function as a cost estimator for the assembly line. For one, the decoder has been decoupled to yield better results (see \ref{subp:decoupling}), and instead of processing text, the model has been fitted with a custom embedding layer which is tasked with reading the size of the work-load within a station, and find a better fit. (FIXME)
+The architecture utilized in this thesis is heavily based on the canonical Transformer model proposed by Vaswani et al. \cite{ref5}, with significant modifications tailored specifically to the Mixed-Model Assembly Line (MMAL) problem, and adapted to function as a cost estimator for the assembly line. For one, the decoder has been decoupled to yield better results (see \ref{subp:decoupling}), and instead of processing text, the model has been fitted with a custom embedding layer which is tasked with reading the size of the work-load within a station, and find a better fit.
 
-\subsubsection{Simulated Annealing} While the Transformer predicts the local impact of individual items, the global sequence scheduling is addressed using Simulated Annealing. This method explores the solution space of item permutations, using a cost matrix derived from the Transformer's drift predictions. By allowing for probabilistic acceptance of sub-optimal transitions Simulated Annealing avoids local optima that typically constrain greedy algorithms, resulting in a more stable assembly line schedule. (FIXME)
+\subsubsection{Simulated Annealing} While the Transformer predicts the local impact of individual items, the global sequence scheduling is addressed using Simulated Annealing. This method explores the solution space of item permutations, using a cost matrix derived from the Transformer's drift predictions. By allowing for probabilistic acceptance of sub-optimal transitions Simulated Annealing avoids local optima that typically constrain greedy algorithms, resulting in a more stable assembly line schedule. 
 
 
 \subsubsection{Unhooking the decoder}
-While testing the feasibility of the transformer model, I found that it yielded better results by switching to a BERT-like model rather than a Sequence-to-Sequence based approach. (FIXME)
+During preliminary feasibility testing, empirical results indicated that a standard Sequence-to-Sequence (Encoder-Decoder) framework was ill-suited for the regression nature of the cost estimation task. Consequently, the architecture was simplified to an Encoder-only configuration, conceptually similar to BERT. This modification eliminates the autoregressive generation step, allowing the model to focus entirely on learning bidirectional contextual representations of the station workload.
+
+
+
+\subsection{The Sequence-to-Sequence Model}
+\label{sec:seq}
+
+TODO 
+
+\subsubsection{Simulated Annealing} Similar to the Transformer model this too uses Simulated Annealing.
+
+
+\subsubsection{Unhooking the decoder}
+FIXME
+
 
 
 \subsection{The Pointer Network Model}
-The proposed solution implements a Pointer Network architecture using the PyTorch framework. The model essentially follows a standard Encoder-Decoder structure enhanced with a content-based attention mechanism, designed to handle variable-length input sequences and output a permutation of the input indices. (FIXME)
+The proposed solution implements a Pointer Network architecture similar to the one proposed in (O. Vinyals et al, 2015). The model essentially follows a standard Encoder-Decoder structure enhanced with a content-based attention mechanism, designed to handle variable-length input sequences and output a permutation of the input indices. 
 
 \subsubsection{Encoder Mechanism}
 The encoder processes the input sequence to generate a representation of the initial problem state.
@@ -669,7 +684,7 @@ To enable the Pointer Network to process the production schedules, the raw JSON 
 \subsection{The Configuration}
 
 \subsection{The Application Programming Interface (API)}
-The system exposes its core functionalities through a RESTful API, facilitating programmatic interaction with the implemented neural architectures. This interface serves as the primary gateway for data ingestion and inference execution. (FIXME)
+The system exposes its core functionalities through a RESTful API, facilitating programmatic interaction with the implemented neural architectures. This interface serves as the primary gateway for data ingestion and inference execution.
 
 \subsection{Endpoints}
 
@@ -779,34 +794,34 @@ Although the operational constraints of the target problem typically limit seque
 
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $10$ (FIXME)}
+        \caption{Test-size of $10$}
         \label{tab:res_10}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $1/25$ & $96\%$ \\
-            Run \#2 & $0/34$ & $100\%$ \\
-            Run \#3 & $2/20$ & $90\%$ \\
+            Run \#1 & $53/63$ & $15.87\%$ \\
+            Run \#2 & $52/57$ & $8.77\%$ \\
+            Run \#3 & $49/49$ & $0\%$ \\
             \midrule
-            \textbf{Avg} & & $95.3\%$ \\
+            \textbf{Avg} & & $8.21\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
     \hfill
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $100$ (FIXME)}
+        \caption{Test-size of $100$}
         \label{tab:res_100}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $449/542$ & $17.26\%$ \\
+            Run \#2 & $451/515$ & $12.43\%$ \\
+            Run \#3 & $495/534$ & $7.3\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $12.33\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -815,32 +830,32 @@ Although the operational constraints of the target problem typically limit seque
 
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $1000$ (Run B) (FIXME)}
+        \caption{Test-size of $1000$}
         \label{tab:res_100b}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $5075/5383$ & $5.72\%$ \\
+            Run \#2 & $5081/5404$ & $5.98\%$ \\
+            Run \#3 & $5168/5441$ & $5.02\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $5.57\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
     \hfill
     \begin{minipage}[t]{0.48\textwidth}
         \centering
-        \caption{Test-size of $10000$ (Run C) (FIXME)}
+        \caption{Test-size of $10000$}
         \label{tab:res_100c}
         \begin{tabular}{l c c}
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $54216/54886$ & $1.22\%$ \\
+            Run \#2 & $ $ & $\%$ \\
+            Run \#3 & $ $ & $\%$ \\
             \midrule
             \textbf{Avg} & & $79.0\%$ \\
             \bottomrule
@@ -863,11 +878,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $1/25$ & $96\%$ \\
-            Run \#2 & $0/34$ & $100\%$ \\
-            Run \#3 & $2/20$ & $90\%$ \\
+            Run \#1 & $ $ & $\%$ \\
+            Run \#2 & $ $ & $\%$ \\
+            Run \#3 & $ $ & $\%$ \\
             \midrule
-            \textbf{Avg} & & $95.3\%$ \\
+            \textbf{Avg} & & $\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -880,11 +895,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $ $ & $\%$ \\
+            Run \#2 & $ $ & $\%$ \\
+            Run \#3 & $ $ & $\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -899,11 +914,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $ $ & $\%$ \\
+            Run \#2 & $ $ & $\%$ \\
+            Run \#3 & $ $ & $\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -916,11 +931,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $ $ & $\%$ \\
+            Run \#2 & $ $ & $\%$ \\
+            Run \#3 & $ $ & $\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -955,15 +970,20 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 
 While the Transformer model could potentially yield improved results through extensive optimization and a larger training set, the computational cost may not be worth the marginal gains. Given that the core objective of this thesis essentially was permutational reordering of fixed time slots, then the Pointer Network is more theoretically aligned with the problem space. The Transformer's generative versatility offers no distinct advantage in this specific context, particularly as the Pointer Network similarly utilizes an attention mechanism to effectively solve these combinatorial constraints.
 
+% \section{Limitations}
+% \subsection{Hardware and Resource Limitations}
 
 \section{Limitations}
 \subsection{Hardware and Resource Limitations}
-    While training the models on a larger set of data (as Transformers generally perform better with more training data) I ran out of available memory so the size of the training data had to be restricted to 500,000 objects at most, while Machine Learning models should in actuality contain millions of training objects. A reason for this could be how the data itself is parsed, and the bottleneck could lie in there. (FIXME)
+Hardware memory constraints restricted the training set to $500,000$ samples, falling short of the millions typically required for optimal Transformer generalization. This limitation likely constrained the model's ability to capture complex patterns. The primary bottleneck was identified within the data parsing implementation rather than the GPU memory capacity itself; future optimizations in data serialization could resolve this to allow for larger batch sizes and more extensive training sets.
 
     Even though Transformer-based architectures generally demonstrate improved generalization with larger datasets, the training size in this study had to be restricted to $500,000$ due to hardware memory constraints. This could have greatly impaced the performance, and feasibility of the Transformer model in this thesis. Preliminary analysis suggests that this bottleneck may stem from the current data parsing implementation, which could be optimized in future work to allow for larger batch sizes and more extensive training sets.
 
 \section{Future Work}
-    Future iterations of this research should prioritize larger datasets and utilize high performance computing clusters to overcome the memory bottlenecks encountered in this study. (FIXME)
+
+Future iterations of this research should prioritize larger datasets and utilize high performance computing clusters to overcome the memory bottlenecks encountered in this study. This would enable the training of models on datasets significantly larger than the current limit of $500,000$ objects. Furthermore, the current transformer model exhibits signs of underfitting, suggesting that the training loop configuration requires further refinement. While an exhaustive optimization of the training regimen was outside the temporal scope of this work, future efforts should focus on tuning these dynamics to fully exploit the model's capacity.
+
+    Additionally, it would be valuable to investigate the feasibility of Online Learning paradigms to see if the model could adapt in real-time using Human-in-the-Loop (HITL) strategies to expand the training scope to include operator overrides. Doing so would incorporate further tacit knowledge, complex reasoning, and constraints that are not captured in the standard training data.
 
 
 \begin{thebibliography}{99}
@@ -992,7 +1012,7 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
     \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
 \bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
 
-\bibitem{ref11} T. Mitchell, \textit{Machine Learning}, Institut für Informatik, Technische Universität München, D-80290, 1997.
+\bibitem{ref11} T. Mitchell, \textit{Machine Learning}, ISBN, publisher, 1997. (FIXME)
 \bibitem{refx} Author, Title, Journal, Year.
 \end{thebibliography}
 \end{document}
