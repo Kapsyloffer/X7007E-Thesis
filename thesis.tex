@@ -39,7 +39,9 @@
 \maketitle
 
 \begin{abstract} 
-    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across the workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads which requires halting the entire assemblyline to remedy the issues. This challenge is formalized as \textit{the Product Sequencing Problem}, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can complement heuristic methods for solving this problem. Using a Transformer-, Pointer Network-, and Sequence to Sequence model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to initialize a heuristic algorithm. By providing informed starting points, this approach aims to reduce the computation time of the algorithm by presenting an adequate starting point.
+    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across the workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads that require halting the entire assemblyline to resolve the issues. 
+
+    This challenge is formalized as \textit{the Product Sequencing Problem}, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can be used for solving this problem. Using a Transformer-, Pointer Network-, and Sequence to Sequence model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to mimic rule-based approaches whilst still providing time-based improvements. 
 \end{abstract}
 
 \chapter*{Acknowledgements} 
@@ -232,7 +234,7 @@ In practice the items do not literally stack or collide. Rather, the assembly li
 
 The Mixed-Model Assembly Line (MMAL) problem is formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms. 
 
-In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
+In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. \cite{ref11} Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
 
 For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by random task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
@@ -351,14 +353,14 @@ Machine learning models operate on numerical vector data, often represented as \
 
 \section{Transforming a language-based model into a sequence based model}
 
-The models examined in this thesis were originally designed for natural language processing tasks, such as translation between languages. Both sequence-to-sequence and transformer-based architectures rely on a predefined vocabulary. This raises the question of whether a list of products can be treated analogously to a collection of words where each product variation forms a distinct element within the vocabulary. Doing so could allow the model to more accurately replicate historical data, along with its flaws.
+Two of the models examined in this thesis were originally designed for natural language processing tasks, such as translation between different languages. Both these models rely on a predefined vocabulary, which can prove problematic when not handling regularly occuring words, but rather unique objects of differing properties. This raises the question of whether a list of products can be treated analogously to a collection of words where each product variation forms a distinct element within the vocabulary. Doing so could allow the model to more accurately replicate historical data, along with its flaws.
 
-However, certain constraints must be imposed as language models often overproduce common tokens such as “the,” since these words are statistically more likely to appear in most positions in any given English sentence. To avoid this bias, the model must instead operate on genuine rearrangements or permutations relevant to our specific application.
+However, certain constraints must be imposed as language models often overproduce common tokens such as “the,” since these words are statistically more likely to appear in most positions in any given English sentence. To avoid this bias, the model must instead operate on genuine rearrangements or permutations relevant to our specific application. This can be done using Embedding. (See \ref{chap:workarounds})
 
 \subsection{Workarounds}
 \label{chap:workarounds}
 
-To adapt the Transformer architecture for product sequencing without suffering from the previously mentioned limitations, two specific architectural modifications were implemented:
+To adapt the architecture of Natural Language Processing for product sequencing without suffering from the previously mentioned limitations, two specific architectural modifications were implemented:
 
 \subsubsection{Continuous-Discrete Embedding}
 Standard NLP models map a finite set of words to static vectors. Since product variations are continuous rather than discrete, a traditional vocabulary approach would require an infinite vocabulary size to capture every possible variation.
@@ -373,12 +375,12 @@ This allows the attention mechanism to process the semantic identity of the stat
 \label{subp:decoupling}
 To strictly prevent the common issue of repeting tokens in generative language models, and instead repurpose it for permutation, the sequence generation decoupled from the neural network entirely.
 
-The Transformer is configured as a standalone Encoder, serving purely as a regressor to predict the offsets of each station. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the Transformer's predictions to minimize a conflict cost matrix:
+The language models are configured as standalone Encoders, serving purely as a regressor to predict the offsets of each station. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the predictions to minimize a conflict cost matrix:
 \begin{equation}
 \text{Cost}_{ij} = \sum (\max(0, | \text{Drift}_i | + | \text{Drift}_j | - \text{Limit}))^2 %TODO: dubbelkolla
 \end{equation}
 
-By using the Transformer solely for feature extraction, and delegating the sorting logic to mathematics, the system ensures that the output is always a valid permutation of the input, which will guarantuee that no items become duplicated or omitted.
+By using the language models solely for feature extraction, and delegating the sorting logic to mathematics, the system ensures that the output is always a valid permutation of the input, which will guarantuee that no items become duplicated or omitted.
 
 
 \chapter{System Architecture}
@@ -989,6 +991,8 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann,
     \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
 \bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
+
+\bibitem{ref11} T. Mitchell, \textit{Machine Learning}, Institut für Informatik, Technische Universität München, D-80290, 1997.
 \bibitem{refx} Author, Title, Journal, Year.
 \end{thebibliography}
 \end{document}
