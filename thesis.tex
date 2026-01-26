@@ -714,11 +714,16 @@ To enable the Pointer Network to process the production schedules, the raw JSON 
     Upon entering the Pointer Network, this raw feature tensor is first processed by the \textit{Projector} module. A linear layer expands the input dimension $S$ into a higher-dimensional latent representation ($d_{model}$). This projected embedding is subsequently passed through a \texttt{Tanh} activation and \texttt{LayerNorm} before being consumed by the Bidirectional LSTM encoder, which generates the context-aware hidden states required for the attention mechanism.
 \end{itemize}
 
-\subsection{The Training Loop}
+\section{The Training Loop}
 (FIXME), (see \ref{chap:workarounds})
-\subsection{The Configuration}
+\subsection{The Pointer Network}
+    TODO
+\subsection{The Transformer Model}
+    TODO
+\subsection{The Sequence-To-Sequence Model} 
+    TODO
 
-\subsection{The Application Programming Interface (API)}
+\section{The Application Programming Interface (API)}
 The system exposes its core functionalities through a RESTful API, facilitating programmatic interaction with the implemented neural architectures. This interface serves as the primary gateway for data ingestion and inference execution.
 
 \subsection{Endpoints}
@@ -1036,8 +1041,7 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann,
     \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
 \bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
-
-\bibitem{ref11} T. Mitchell, \textit{Machine Learning}, ISBN, publisher, 1997. (FIXME)
+\bibitem{ref11} T. Mitchell, \textit{Machine Learning}, 9780070428072, McGraw-Hill, 1997. 
 \bibitem{ref12} J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, 
     \textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, 
     Proceedings of NAACL-HLT, 2019.
