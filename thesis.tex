@@ -39,7 +39,7 @@
 \maketitle
 
 \begin{abstract} 
-    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across the workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads that require halting the entire assemblyline to resolve the issues. 
+    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across the workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads that require halting the entire assembly line to resolve the issues. 
 
     This challenge is formalized as \textit{the Product Sequencing Problem}, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can be used for solving this problem. Using a Transformer-, Pointer Network-, and Sequence to Sequence model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to mimic rule-based approaches whilst still providing time-based improvements. 
 \end{abstract}
@@ -54,12 +54,14 @@ EU funding).
 
 \chapter{Introduction}
 \section{Background}
-This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. %ad hoc = academic for "doohickey"
+This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic.%ad hoc = academic for "doohickey"
 
-To improve upon this, a heuristic algorithm has been proposed. The algorithm first generates a feasible baseline solution from pre-defined constraints, and then it refines the baseline until an acceptable sequence is reached. The central question of this thesis is whether the runtime of such an algorithm can be reduced by initializing it with a baseline informed by historical sequencing data, rather than relying solely on rule-based object placements. The baseline in question will be generated using a deep-learning model. 
+The main constraint for this problem is that the assembly line moves synchronously; if a single station exceeds its cycle time, often depicted as an overlap (see \ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts.
+
+The methods used in assembly today are strictly rules-based, and due to a large number of rules that have accumulated over the years a lot of these subtleties can prove highly restrictive in search of better solutions. 
 
 \section{Research Problem}
-Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given heuristic method. Such informed baselines could potentially reduce the runtime required to reach high-quality solutions, especially for complex sequencing instances. 
+Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a time-based approach can help reduce the number of station overloads (\ref{chap:overlap}), and conflicts.
 
 \clearpage %TODO: Ta bort om nödvändigt
 \section{Objectives}
@@ -75,7 +77,7 @@ The objectives of this thesis are:
 
 The user interface (UI) will visualize the flow of the assembly line along two axes: one representing stations and one representing clockcycles. A clockcycle is defined as the time required for an item to move from one station to the next. In the visualization, items are displayed in a way that reflects the relative duration of processing at each station. In \autoref{fig:assembly}, this is illustrated by stretching items along the timeline to better represent the clockcycles. Note that a clockcycle is an arbitrary unit of time and does not correspond to real-world durations. For the purpose of this thesis, one clockcycle is defined as the time it takes for an arbitrary item $X$ to move from station $S_n$ to station $S_{n+1}$. 
 
-Each entry, whose size represents the time it needs to complete its cycle, may borrow time from a previous or upcoming station, this is refered to as the \textit{"drift area"}. Unfortunately, this is where the problems related to the Mixed-Model Assembly Lines start to arise. If time-intensive items are placed consecutively, we will experience an overlap, as the time-allocations will not fit given the constraints of the station and drift areas.
+Each entry, whose size represents the time it needs to complete its cycle, may borrow time from a previous or upcoming station, this is refered to as the \textit{"drift area"} (see \ref{chap:drift}). Unfortunately, this is where the problems related to the Mixed-Model Assembly Lines start to arise. If time-intensive items are placed consecutively, we will experience an overlap, as the time-allocations will not fit given the constraints of the station and drift areas.
 
 \begin{figure}[ht]
     \centering
@@ -160,7 +162,7 @@ Do note that on $T$, $E$ does not utilize the drift area which results in it sit
 
 The same issue derives at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
-\section{Jump-in and Jump-out}
+\section{Jump-in and Jump-out (FIXME)}
 In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order remains unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}.
 
 A related challenge occurs when the missing components finally arrive. At this point, the product occupies space on the assembly station. Ideally, it should be reintegrated into the line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
@@ -170,6 +172,53 @@ From an algorithmic perspective, a \emph{jump-in} can be treated as an $O(n)$ pr
 Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the line by a clock cycle, potentially causing overloads. Alternatively, the gap could be left in place, which avoids overloading but may result in lost revenue.
 
 \clearpage %blir fult annars
+\section{Defining Drift Area}
+\label{chap:drift}
+The Drift Area is visualized in this thesis as a gray zone intersecting two neighbouring stations, it is also the source of our scheduling conflicts. The Drift Area allows for a lot of flexibility due to the fact that \textit{instead} of slowing down the assembly line to $1100$ Cmin and decreasing the production output by roughly $40\%$, the assembly line instead moves at a pace of $700$ Cmin per station (Standard Takt), with $200 $Cmin available as \textit{drift} on both sides.
+
+For a station $S_n$ (where $Takt = 700$ Cmin), we can use up to $200$ Cmin from $S_{n-1}$ and up to $200$ Cmin from $S_{n+1}$. This is refered to in this thesis as \textbf{Borrowing}. Borrowing this way will give us up to a total time of $1100$ Cmin for any given task, with the caveat of $S_{n-1}$ and $S_{n+1}$ being reduced to a minimum of $500$ Cmin.
+
+It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, then work cannot begin on $n+1$ until it has finished. 
+
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Latex, font=\large, scale=1, transform shape]
+  \foreach \x in {0, 5, 10} {
+    \fill[gray!20] (\x - 0.75, -1) rectangle (\x + 0.75, 2.1);
+  }
+  \draw[thick, fill=white] (0.2, -.5) rectangle (4.6, 1.5);
+  \draw[thick, fill=white] (5.4, -.5) rectangle (9.8, 1.5);
+  \draw[thick, fill=white] (10.2, -.5) rectangle (11.0, 1.5);
+  \draw[|-|] (4.25, -1.5) -- (5.75, -1.5) node[midway, below] {Drift Area};
+  
+  \foreach \x/\label in {0/{$T-1$}, 5/{$T$}, 10/{$T+1$}} {
+    \draw[very thick] (\x, -1) -- (\x, 2.1);
+    \node[above, black] at (\x, 2.1) {\bfseries \label}; 
+  }
+\end{tikzpicture}
+    \caption{Two objects whose $Size_{T_n} < Takt$. This is the most common case, as opposed to the more extreme cases shown in this thesis.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Latex, font=\large, scale=1, transform shape]
+  \foreach \x in {0, 5, 10} {
+    \fill[gray!20] (\x - 0.75, -1) rectangle (\x + 0.75, 2.1);
+  }
+  \draw[thick, fill=white] (-0.8, -.5) rectangle (5.2, 1.5);
+  \draw[thick, fill=white] (5.4, -.5) rectangle (10.8, 1.5);
+  \draw[|-|] (-.8, -1.5) -- (0, -1.5) node[midway, below] {Borrowing};
+  \draw[|-|] (5, -1.5) -- (5.2, -1.5) node[midway, below] {Borrowing};
+  \draw[|-|] (10, -1.5) -- (10.8, -1.5) node[midway, below] {Borrowing};
+  
+  \foreach \x/\label in {0/{$T-1$}, 5/{$T$}, 10/{$T+1$}} {
+    \draw[very thick] (\x, -1) -- (\x, 2.1);
+    \node[above, black] at (\x, 2.1) {\bfseries \label}; 
+  }
+\end{tikzpicture}
+    \caption{Two objects whose $Size_{T_n} > Takt$. Both need to borrow time from their neighbouring stations in order to finish in time.}
+\end{figure}
 \section{Defining Overlaps}
 \label{chap:overlap}
 
@@ -177,7 +226,9 @@ Overlaps stem from timing dependencies: each item’s "size" on a station $S_n$ 
 
 However, if two items are processed consecutively at station $S_n$, and both of those items exceed \textbf{Takt} in $S_n$ to the point of requiring the usage of both of its neighbouring stations ($S_{n-1}$ and $S_{n+1}$), then there \textit{will} not be sufficient time for all operations to complete if both of those objects need to borrow time. These conflicting dependencies result in what's visualized as (and defined in theis thesis as) an overlap, there simply isn't enough time for assembly to finish in time.
 
-In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow the operation to complete before the assembly line may continue again.
+In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow the operation to complete before the assembly line may continue again. 
+
+Overlap are simply put how station overloads are visualized in this thesis, as we follow the constraint that no matter what, an allocation can never exceed $Takt + 2 * Drift$ in size, and an allocation can never go past the right-most limit of the drift area on the coming station.
 
 
 \begin{figure}[htbp]
@@ -234,7 +285,7 @@ In practice the items do not literally stack or collide. Rather, the assembly li
 
 The Mixed-Model Assembly Line (MMAL) problem is formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms. 
 
-In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. \cite{ref11} Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
+In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
 
 For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by random task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
