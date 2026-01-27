@@ -64,12 +64,11 @@ The methods used in assembly today are strictly rules-based, and due to a large 
 Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a time-based approach can help reduce the number of station overloads (\ref{chap:overlap}), and conflicts.
 
 \clearpage %TODO: Ta bort om nödvändigt
-\section{Objectives}
+\section{Objectives (FIXME)}
 The objectives of this thesis are:
 \begin{enumerate}
     \item To design a deep learning model capable of emulating the tacit knowledge of management workers using historical data.
     \item To investigate which model performs the best in the given task of permuting input data to an acceptable solution.
-    \item To integrate the model as a preprocessing step in the existing heuristic algorithm in order to reduce its runtime.
     \item To provide a visualization tool that intuitively illustrates the scheduling flow, highlighting overlaps, borrowed time, and bottlenecks across stations and time.
 \end{enumerate}
 
@@ -283,17 +282,17 @@ Overlap are simply put how station overloads are visualized in this thesis, as w
 \label{ch:sota}
 
 
-The Mixed-Model Assembly Line (MMAL) problem is formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms. 
+The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms, rather than using machine learning.
 
 In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
 
 For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by random task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
-However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating provene human strategies, hence I've chosen to use Deep Unsupervised Learning instead.
+However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating provene human strategies, hence the use of Deep Unsupervised Learning was chosen instead.
 
 While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
 
-Current manual approaches rely heavily on the "tacit knowledge" of management staff, knowledge accumulated through experience that is difficult to articulate as explicit rules. This thesis proposes capturing this knowledge using Supervised Learning, formally known in this context as Imitation Learning. 
+Current manual approaches rely heavily on the "tacit knowledge" of management staff, knowledge accumulated through experience that is difficult to articulate as explicit rules, especially if rules have accumulated over time. This thesis proposes capturing this knowledge using Supervised Learning, formally known in this context as Imitation Learning. 
 
 
 \section{Recurrent Architectures}
@@ -330,114 +329,25 @@ This limitation motivates the shift toward \textbf{Attention-based approaches}, 
 
 To address the sequential bottlenecks of RNNs, Transformer-based architectures discard recurrence entirely, relying instead on a self-attention mechanism \cite{ref5}.
 
-The defining characteristic of the Transformer is the use of scaled dot-product attention. This allows the model to weigh the importance of each element in a given sequence relative to all other elements in that same sequence, regardless of distance. This parallelized computation not only accelerates training but enables the model to capture global dependencies more effectively than RNN-based methods. Since Transformers are order-agnostic, positional encodings are added to the input vectors to retain sequence order information \cite{ref5}.
+The defining characteristic of the Transformer is the use of scaled dot-product attention. This allows the model to weigh the importance of each element in a given sequence relative to all other elements in that same sequence, regardless of distance. \cite{ref14} This parallelized computation not only accelerates training but enables the model to capture global dependencies more effectively than RNN-based methods. Since Transformers are order-agnostic, positional encodings are added to the input vectors to retain sequence order information \cite{ref5}.
 
-For scheduling problems, this translates into the ability to model complex interactions across the entire planning horizon. The placement of one item can be directly conditioned on all others in the same day's sequence, providing the context awareness necessary for effective assembly line scheduling \cite{ref8}.
+For combinatorial scheduling problems, this translates into the ability to model complex interactions across the entire planning horizon. \cite{ref13} The placement of one item can be directly conditioned on all others in the same day's sequence, providing the context awareness necessary for effective assembly line scheduling \cite{ref8}.
 
 \subsection{Pointer Networks}
 \label{subsec:pointer_nets}
 
 While Transformers excel at context, they still typically rely on generating tokens from a fixed vocabulary. The \textbf{Pointer Network} is the only architecture in this analysis specifically designed for combinatorial optimization and permutation problems \cite{ref7}.
 
-Implemented using an encoder-decoder structure (often LSTM-based), the Pointer Network utilizes a specialized attention mechanism to generate context vectors that "point" to specific elements in the input sequence rather than predicting a value from a dictionary. This explicitly solves the fixed vocabulary problem: the model selects which station to place next directly from the available input pool. This significantly reduces the risk of repeating or hallucinating items, a common failure mode in standard Seq2Seq models \cite{ref7}.
+Implemented using an encoder-decoder structure of the sequence-to-sequence model, the Pointer Network utilizes a specialized attention mechanism to generate context vectors that "point" to specific elements in the input sequence rather than predicting a value from a dictionary. 
+
+This model is explicitly designed with combinatorial problems in mind, such as the traveling salesman problem, convex hull, and other combinatorial optimization problems. \cite{ref7} It can thus be used to well-suited for the mixed-model assembly line problem (MMAL), as the object attributes (such as station order, or time to complete) are immutable, and the only thing that matters for our case is the permutation/rearrangement.
+
 
 \chapter{Methodology}
-\section{The Heuristic Approach}
 
-The problem to properly order manufacturing assembly lines with as few overlaps as possible is considered an NP-Hard problem, as it is an optimization problem.
-
-\begin{figure}[ht]
-    \centering
-
-\begin{tikzpicture}[>=Latex, node distance=2cm, thick]
-
-  \node[draw, minimum width=2cm, minimum height=1cm, align=center] (CH) {CH};
-  \node[draw, minimum width=2cm, minimum height=1cm, align=center, right=of CH] (MH) {MH};
-
-  \draw[->] ($(CH.west)+(-2,0)$) -- (CH.west) node[pos=0, above] {input};
-  
-  \draw[->] (CH.east) -- (MH.west) node[midway, above] {output};
-
-  \draw[->] (MH.east) -- ++(1,0) -- ++(0,1) -- ++(-2,0) -- (MH.north);      
-
-  \draw[->] (MH.east) -- ++(2,0) node[pos=1, below] {result};
-
-\end{tikzpicture}
-    \caption{Heuristic solution}
-    \label{fig:solution}
-\end{figure}
-
-The Algorithm designed to solve this problem is a heuristic solution that will be made out of a Construction Hieuristic $(C\!H)$ that produces a starting point based on pre-defined constraints, that feeds into a Meta Heuristic $(M\!H)$ that finds a better solution starting from the output of the construction heuristic and self-improving until an acceptable result is returned. 
-
-
-\section{Complementing the Heuristic Approach using Machine Learning}
-Due to the fact that management workers today place the items manually using tacit knowledge that they have accumulated over the years, and in some cases can tell at first glance if a sequence may create problems, then what this thesis proposes is to emulate that exact same knowledge by learning which placement patterns tend to work together and which do not.
-
-The idea is that; if these workers have knowledge of an adequate solution from the get-go with some risk of overlap, then we can train a Deep Learning Model $(M\!L)$ on such previous data to give the algorithm a better starting point, thus (in theory) reducing the runtime of that algorithm.
-
-\begin{figure}[ht]
-    \centering
-    \begin{tikzpicture}[>=Latex, node distance=2cm, thick]
-        \node[draw, minimum width=2cm, minimum height=1cm, align=center] (MH) {MH};
-\node[draw, minimum width=2cm, minimum height=1cm, below left=1cm and 2cm of MH] (ML) {ML};
-        \node[draw, align=center, right=of ML] (Data) {Data};
-        \node[draw, dotted, minimum width=2cm, minimum height=1cm, align=center, left=4cm of MH] (CH) {CH};
-        \draw[->] (MH.east) -- ++(1,0) -- ++(0,1) -- ++(-2,0) -- (MH.north);      
-
-        \draw[->] (MH.east) -- ++(2,0) node[pos=1, below] {result};
-
-        \draw[->] ($(ML.west)+(-2,0)$) -- (ML.west) node[pos=0, above] {input};
-
-        \draw[->] (Data.west) -- (ML.east);
-
-        \draw[->] (ML.north) |- (MH.west);
-
-    \end{tikzpicture}
-    \caption{ML solution}
-    \label{fig:ml_solution}
-\end{figure}
-
-However it is worth to consider that such an approach can prove redundant or yield worse results if the problem at hand is an "easy" problem where many solutions can be found quickly, as opposed to a "hard" problem where a desired solution may not even be found. 
-
-\section{JSON to Vector Methodology}
-Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Given a list of JSON objects on an assembly line, each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical data, a model can then be trained to learn a mapping from an input order of JSONs to a desired output order.
-
-\section{Transforming a language-based model into a sequence based model}
-
-Two of the models examined in this thesis were originally designed for natural language processing tasks, such as translation between different languages. Both these models rely on a predefined vocabulary, which can prove problematic when not handling regularly occuring words, but rather unique objects of differing properties. This raises the question of whether a list of products can be treated analogously to a collection of words where each product variation forms a distinct element within the vocabulary. Doing so could allow the model to more accurately replicate historical data, along with its flaws.
-
-However, certain constraints must be imposed as language models often overproduce common tokens such as “the,” since these words are statistically more likely to appear in most positions in any given English sentence. To avoid this bias, the model must instead operate on genuine rearrangements or permutations relevant to our specific application. This can be done using Embedding. (See \ref{chap:workarounds})
-
-\subsection{Workarounds}
-\label{chap:workarounds}
-
-To adapt the architecture of Natural Language Processing for product sequencing without suffering from the previously mentioned limitations, two specific architectural modifications were implemented:
-
-\subsubsection{Continuous-Discrete Embedding}
-Standard NLP models map a finite set of words to static vectors. Since product variations are continuous rather than discrete, a traditional vocabulary approach would require an infinite vocabulary size to capture every possible variation.
-
-To resolve this, the implementation utilizes a custom \textit{ObjectEmbedding} layer. The discrete station identifier is mapped via a standard lookup table, while the size value is projected through a linear layer. These two feature sets are concatenated to form the input vector:
-\begin{equation}
-E_{input} = \text{Concat}(\text{Embedding}(ID), \text{Linear}(Size)) %TODO: dubbelkolla
-\end{equation}
-This allows the attention mechanism to process the semantic identity of the station, enabling the model to generalize to unseen product sizes without expanding the vocabulary.
-
-\subsubsection{Decoupling Prediction from Sequencing}
-\label{subp:decoupling}
-To strictly prevent the common issue of repeting tokens in generative language models, and instead repurpose it for permutation, the sequence generation decoupled from the neural network entirely.
-
-The language models are configured as standalone Encoders, serving purely as a regressor to predict the offsets of each station. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the predictions to minimize a conflict cost matrix:
-\begin{equation}
-\text{Cost}_{ij} = \sum (\max(0, | \text{Drift}_i | + | \text{Drift}_j | - \text{Limit}))^2 %TODO: dubbelkolla
-\end{equation}
-
-By using the language models solely for feature extraction, and delegating the sorting logic to mathematics, the system ensures that the output is always a valid permutation of the input, which will guarantuee that no items become duplicated or omitted.
-
-
-\chapter{System Architecture}
 \section {Data generation}
 \subsection{Constants}
-For data generation the following constants were used:
+For data generation the following constants are used:
 \begin{table}[htbp]
     \centering
     \caption{Table of Constants used in Data Generation}
@@ -652,6 +562,41 @@ This process results in a dataset where every input (the sequence of objects) ha
     \caption{Case 2: The gray object is borrowing time from the white object in $S_n$. Even though it finished in $S_{n-1}$, the white object cannot begin assembly right away in $S_n$ as it's dependent on the gray object finishing at $S_n$.}
 \end{minipage}
 \end{figure}
+\section{JSON to Vector Methodology}
+Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Given a list of JSON objects on an assembly line, each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical data, a model can then be trained to learn a mapping from an input order of JSONs to a desired output order.
+
+\section{Transforming a language-based model into a sequence based model}
+
+Two of the models examined in this thesis were originally designed for natural language processing tasks, such as translation between different languages. Both these models rely on a predefined vocabulary, which can prove problematic when not handling regularly occuring words, but rather unique objects of differing properties. This raises the question of whether a list of products can be treated analogously to a collection of words where each product variation forms a distinct element within the vocabulary. Doing so could allow the model to more accurately replicate historical data, along with its flaws.
+
+However, certain constraints must be imposed as language models often overproduce common tokens such as “the,” since these words are statistically more likely to appear in most positions in any given English sentence. To avoid this bias, the model must instead operate on genuine rearrangements or permutations relevant to our specific application. This can be done using Embedding. (See \ref{chap:workarounds})
+
+\subsection{Workarounds}
+\label{chap:workarounds}
+
+To adapt the architecture of Natural Language Processing for product sequencing without suffering from the previously mentioned limitations, two specific architectural modifications were implemented:
+
+\subsubsection{Continuous-Discrete Embedding}
+Standard NLP models map a finite set of words to static vectors. Since product variations are continuous rather than discrete, a traditional vocabulary approach would require an infinite vocabulary size to capture every possible variation.
+
+To resolve this, the implementation utilizes a custom \textit{ObjectEmbedding} layer. The discrete station identifier is mapped via a standard lookup table, while the size value is projected through a linear layer. These two feature sets are concatenated to form the input vector:
+\begin{equation}
+E_{input} = \text{Concat}(\text{Embedding}(ID), \text{Linear}(Size)) %TODO: dubbelkolla
+\end{equation}
+This allows the attention mechanism to process the semantic identity of the station, enabling the model to generalize to unseen product sizes without expanding the vocabulary.
+
+\subsubsection{Decoupling Prediction from Sequencing}
+\label{subp:decoupling}
+To strictly prevent the common issue of repeting tokens in generative language models, and instead repurpose it for permutation, the sequence generation decoupled from the neural network entirely.
+
+The language models are configured as standalone Encoders, serving purely as a regressor to predict the offsets of each station. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the predictions to minimize a conflict cost matrix:
+\begin{equation}
+\text{Cost}_{ij} = \sum (\max(0, | \text{Drift}_i | + | \text{Drift}_j | - \text{Limit}))^2 %TODO: dubbelkolla
+\end{equation}
+
+By using the language models solely for feature extraction, and delegating the sorting logic to mathematics, the system ensures that the output is always a valid permutation of the input, which will guarantuee that no items become duplicated or omitted.
+
+\chapter{System Architecture}
 
 \section{Machine Learning Models}
 
@@ -1072,9 +1017,9 @@ Future iterations of this research should prioritize larger datasets and utilize
 A. Dupuis, C. Dadouchi, and B. Agard, 
         \textit{A decision support system for sequencing production in the manufacturing industry},
 \textit{Computers \& Industrial Engineering}, vol.~185, p.~109686, 2023. 
-\bibitem{ref3} J. Lindén, 
-    \textit{Understand and Utilise Unformatted Text Documents by Natural Language Processing Algorithms}, 
-    Master’s thesis, Mid Sweden University, Department of Information and Communication Systems (IST), Spring 2017.
+\bibitem{ref3} A. Bay, B. Sengupta,
+    \textit{Approximating meta-heuristics with homotopic recurrent neural networks},
+    arXiv preprint arXiv:1709.02194, 2017.
 \bibitem{ref4} I. Pointer,
     \textit{Programming PyTorch for Deep Learning, ISBN: 9781492045359},
 O'Reilly Media, 2019.
@@ -1096,10 +1041,14 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref12} J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, 
     \textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, 
     Proceedings of NAACL-HLT, 2019.
+\bibitem{ref13} P. Giannoulis, Y. Pantis, C. Tzamos, 
+    \textit{Teaching Transformers to Solve Combinatorial Problems through Efficient Trial \& Error}, 
+    Advances in Neural Information Processing Systems (NeurIPS), 2025.
+\bibitem{ref14} Y. Youssef, P. R. M. de Araujo, A. Noureldin, S. Givigi,
+    \textit{TRATSS: Transformer-Based Task Scheduling System for Autonomous Vehicles},
+    arXiv preprint arXiv:2504.05407, 2025.
 \bibitem{refx} Author, Title, Journal, Year.
+
+
 \end{thebibliography}
 \end{document}
-
-
-%TODO: Fler modeller, typ 2st till, Transformer, Seq2Seq, PointerNetwork
-%TODO: Kanske generera fasta modeller, 6 axlar, 12, etc. För att se ifall regler kan följas?
