@@ -54,7 +54,7 @@ EU funding).
 
 \chapter{Introduction}
 \section{Background}
-This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic.%ad hoc = academic for "doohickey"
+This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. 
 
 The main constraint for this problem is that the assembly line moves synchronously; if a single station exceeds its cycle time, often depicted as an overlap (see \ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts.
 
@@ -64,7 +64,7 @@ The methods used in assembly today are strictly rules-based, and due to a large 
 Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a time-based approach can help reduce the number of station overloads (\ref{chap:overlap}), and conflicts.
 
 \clearpage %TODO: Ta bort om nödvändigt
-\section{Objectives (FIXME)}
+\section{Objectives} %FIXME
 The objectives of this thesis are:
 \begin{enumerate}
     \item To design a deep learning model capable of emulating the tacit knowledge of management workers using historical data.
@@ -161,7 +161,7 @@ Do note that on $T$, $E$ does not utilize the drift area which results in it sit
 
 The same issue derives at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
-\section{Jump-in and Jump-out (FIXME)}
+\section{Jump-in and Jump-out} % FIXME
 In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order remains unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}.
 
 A related challenge occurs when the missing components finally arrive. At this point, the product occupies space on the assembly station. Ideally, it should be reintegrated into the line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
@@ -223,7 +223,7 @@ It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, t
 
 Overlaps stem from timing dependencies: each item’s "size" on a station $S_n$ depends on how long it takes for the item to process at the station. In other words, the "size" of the task is the duration of the task relative the duration of the station. If a task exceeds \textbf{Takt} in duration, then the use of the drift area is mandatory. 
 
-However, if two items are processed consecutively at station $S_n$, and both of those items exceed \textbf{Takt} in $S_n$ to the point of requiring the usage of both of its neighbouring stations ($S_{n-1}$ and $S_{n+1}$), then there \textit{will} not be sufficient time for all operations to complete if both of those objects need to borrow time. These conflicting dependencies result in what's visualized as (and defined in theis thesis as) an overlap, there simply isn't enough time for assembly to finish in time.
+However, if two items are processed consecutively at station $S_n$, and both of those items exceed \textbf{Takt} in $S_n$ to the point of requiring the usage of both of its neighbouring stations ($S_{n-1}$ and $S_{n+1}$), then there \textit{will} not be sufficient time for all operations to complete if both of those objects need to borrow time. These conflicting dependencies result in what's visualized as (and defined in this thesis as) an overlap, there simply isn't enough time for assembly to finish in time.
 
 In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow the operation to complete before the assembly line may continue again. 
 
@@ -288,7 +288,7 @@ In recent years, Deep Reinforcement Learning (DRL) has become a dominant approac
 
 For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by random task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
-However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating provene human strategies, hence the use of Deep Unsupervised Learning was chosen instead.
+However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Unsupervised Learning was chosen instead.
 
 While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
 
@@ -313,7 +313,7 @@ Seq2Seq models, typically built upon encoder-decoder RNN architectures, are desi
 
 However, applying standard Seq2Seq models to permutation problems presents a specific challenge: \textbf{vocabulary definition}. Standard NLP models select outputs from a fixed, pre-defined vocabulary, similar to a dictionary. In a manufacturing context, where every day's product list is unique, a fixed vocabulary is insufficient. The model must instead learn to select from the dynamic input available that day, a task that is non-trivial for standard Seq2Seq architectures unless they strictly rely on abstract sequence indices \cite{ref2, ref3}.
 
-One way to remedy this limitation is to modify the decoder to point directly to the input elements, an approach that leads to the development of Pointer Networks (discussed in Section \ref{subsec:pointer_nets}).
+One way to remedy this limitation is to modify the decoder to point directly to the input elements, an approach that leads to the development of Pointer Networks,
 
 \subsection{Limitations of Recurrent Architectures}
 
@@ -360,7 +360,7 @@ For data generation the following constants are used:
         Stations   & 35      & Number of stations \\
         Takt       & 700     & The cycle time ($Cmin$) \\
         Drift      & 200     & The size of the drift area ($Cmin$) \\
-        Gap        & 10       & Minimum buffer distance between objects \\
+        Gap        & 10       & Time-buffer ($Cmin$) between genreated objects \\
         Multiplier & 500     & Constant value to multiply \textit{Objects} with \\
         \bottomrule
     \end{tabular}
@@ -452,7 +452,7 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
 
 \end{figure}
 
-\subsection{Constructive Data Generation as a Solved Puzzle}
+\subsection{Constructive Data Generation as a Solved Puzzle} %FIXME
 
 To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than randomly placing tasks and checking for validity, the system employs a constructive generation algorithm. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training.
 
@@ -476,7 +476,7 @@ The dimensions of the tasks are also generated dependently. While a desired dura
 
 This process results in a dataset where every input (the sequence of objects) has a perfectly matching output (the offsets and sizes) that is guaranteed to be solvable, providing a robust target for supervised learning.
 
-(FIXME)
+%FIXME 
 
 \begin{figure}[H] 
 \centering
@@ -563,42 +563,36 @@ This process results in a dataset where every input (the sequence of objects) ha
 \end{minipage}
 \end{figure}
 \section{JSON to Vector Methodology}
-Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Given a list of JSON objects on an assembly line, each JSON can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the entire list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences from historical data, a model can then be trained to learn a mapping from an input order of JSONs to a desired output order.
+Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Considering a sequence of JSON objects on an assembly line, each object can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences derived from historical data, a model can be trained to learn a mapping from an input configuration of JSONs to a desired output order.
 
-\section{Transforming a language-based model into a sequence based model}
+\section{Adapting Language-Based Models for Sequencing}
 
-Two of the models examined in this thesis were originally designed for natural language processing tasks, such as translation between different languages. Both these models rely on a predefined vocabulary, which can prove problematic when not handling regularly occuring words, but rather unique objects of differing properties. This raises the question of whether a list of products can be treated analogously to a collection of words where each product variation forms a distinct element within the vocabulary. Doing so could allow the model to more accurately replicate historical data, along with its flaws.
+Two of the models examined in this thesis were originally designed for natural language processing (NLP) tasks, such as machine translation. These models typically rely on a predefined vocabulary. This reliance proves problematic when the data does not consist of frequently occurring words, but rather unique objects with distinct properties. This raises the question of whether a list of products can be treated analogously to a collection of words, where each product variation constitutes a distinct element within the vocabulary. While this approach allows the model to replicate historical patterns, it risks learning inherent data biases or flaws.
 
-However, certain constraints must be imposed as language models often overproduce common tokens such as “the,” since these words are statistically more likely to appear in most positions in any given English sentence. To avoid this bias, the model must instead operate on genuine rearrangements or permutations relevant to our specific application. This can be done using Embedding. (See \ref{chap:workarounds})
+Furthermore, specific constraints must be imposed. Language models tend to overproduce common tokens (e.g., “the”) because they are statistically probable in general English text. To avoid this bias in a combinatorial context, the model must be constrained to generate valid permutations relevant to the specific application (see \ref{chap:workarounds}).
 
-\subsection{Workarounds}
+\section{Workarounds}
 \label{chap:workarounds}
 
-To adapt the architecture of Natural Language Processing for product sequencing without suffering from the previously mentioned limitations, two specific architectural modifications were implemented:
+The Transformer and Sequence-To-Sequence models have been adapted from their original NLP architectures to address this combinatorial problem. The Pointer Network remains unaffected by these modifications.
 
-\subsubsection{Continuous-Discrete Embedding}
-Standard NLP models map a finite set of words to static vectors. Since product variations are continuous rather than discrete, a traditional vocabulary approach would require an infinite vocabulary size to capture every possible variation.
+\subsection{Direct Continuous Input}
 
-To resolve this, the implementation utilizes a custom \textit{ObjectEmbedding} layer. The discrete station identifier is mapped via a standard lookup table, while the size value is projected through a linear layer. These two feature sets are concatenated to form the input vector:
-\begin{equation}
-E_{input} = \text{Concat}(\text{Embedding}(ID), \text{Linear}(Size)) %TODO: dubbelkolla
-\end{equation}
-This allows the attention mechanism to process the semantic identity of the station, enabling the model to generalize to unseen product sizes without expanding the vocabulary.
+The Sequence-To-Sequence model is implemented here without an Embedding layer. Instead of projecting vocabulary indices into a latent embedding space, this module is omitted to allow raw feature vectors to be processed directly. This enables the model to interpret the specific magnitudes and geometric properties of input elements as continuous values rather than abstract symbols. This approach is particularly well-suited for combinatorial tasks, as it preserves intrinsic numerical relationships in the data that would otherwise be obscured by tokenization.
 
-\subsubsection{Decoupling Prediction from Sequencing}
-\label{subp:decoupling}
-To strictly prevent the common issue of repeting tokens in generative language models, and instead repurpose it for permutation, the sequence generation decoupled from the neural network entirely.
+\subsection{Soft Decoding}
 
-The language models are configured as standalone Encoders, serving purely as a regressor to predict the offsets of each station. It does not output a probability distribution over the next token. Instead, the final reordering is performed by a combinatorial optimizer (Simulated Annealing) which utilizes the predictions to minimize a conflict cost matrix:
-\begin{equation}
-\text{Cost}_{ij} = \sum (\max(0, | \text{Drift}_i | + | \text{Drift}_j | - \text{Limit}))^2 %TODO: dubbelkolla
-\end{equation}
+The Sequence-To-Sequence model employs a "soft" feedback loop during sequence generation. In traditional language processing, the decoder typically commits to a single discrete choice by selecting the most probable word and treating it as the ground truth for the subsequent step. In this context, however, rigid early choices can trap the model in sub-optimal paths. To mitigate this, the model feeds the full probability distribution into the next step rather than a single discrete selection. By propagating uncertainty rather than discarding it, the system can dynamically refine its strategy as the output sequence is constructed.
 
-By using the language models solely for feature extraction, and delegating the sorting logic to mathematics, the system ensures that the output is always a valid permutation of the input, which will guarantuee that no items become duplicated or omitted.
+\subsection{The Pointer Head}
+
+TODO
 
 \chapter{System Architecture}
 
 \section{Machine Learning Models}
+
+The models in this thesis are implemented using PyTorch.
 
 \begin{table}[htbp]
     \centering
@@ -617,107 +611,120 @@ By using the language models solely for feature extraction, and delegating the s
     \end{tabular}
 \end{table}
 
-\subsection{The Transformer Model (FIXME)}
+\subsection{The Transformer Model}
 \label{sec:trans}
+The implemented model adapts the standard Transformer architecture originally proposed by Vaswani et al. \cite{ref5} to handle continuous combinatorial data. Unlike standard NLP models that process discrete tokens, this implementation operates on continuous feature vectors and utilizes a pointer mechanism for output generation.
 
-The architecture utilized in this thesis is derived from the canonical Transformer model proposed by Vaswani et al. \cite{ref5}, but includes significant modifications tailored to the Mixed-Model Assembly Line (MMAL) problem. Unlike standard NLP implementations that process tokenized text, this model treats the assembly line as a sequence of station-workload pairs. 
+\subsubsection{Continuous Input Embeddings}
+Standard Transformers typically utilize a lookup table to map discrete vocabulary indices to dense vectors. Since the input data for this problem consists of continuous immutable features (station order (always 1 - n), station times, dimensions), the embedding layer is replaced by a learnable linear projection. 
 
-To handle this multi-modal input, the model is fitted with a custom \textit{Object Embedding} layer. As defined in the system implementation, this layer fuses categorical data with continuous variables: the station index is mapped to a learnable embedding vector of size $d_{model}/2$, while the continuous workload size is projected via a linear layer to match this dimension. These two representations are concatenated and summed with sinusoidal positional encodings, allowing the model to interpret both the magnitude of the work and its sequential position in the line.
+\subsubsection{Positional Encoding}
+As the Transformer architecture contains no recurrence or convolution, it can thus not distinguish the order of the input objects, essentially treating it as an unordered set. To address this, a fixed sinusoidal Positional Encoding is added to the input embeddings. This provides each element with a unique geometric signature, allowing the model to determine the relative positions of objects within the sequence. The encodings are calculated as \cite{ref5}:
+\begin{equation}
+    PE_{(pos, 2i)} = \sin(pos / 10000^{2i/d_{model}})
+\end{equation}
+\begin{equation}
+    PE_{(pos, 2i+1)} = \cos(pos / 10000^{2i/d_{model}})
+\end{equation}
+This mechanism allows the model to distinguish between identical tasks placed at different positions in the sequence.
 
-\subsubsection{Encoder-Only Regression}
-\label{subp:decoupling}
-During preliminary feasibility testing, empirical results indicated that a standard Sequence-to-Sequence (Encoder-Decoder) framework was ill-suited for the regression nature of cost estimation. Consequently, the architecture was simplified to an Encoder-only configuration, conceptually similar to BERT. \cite{ref12}
+\subsubsection{Layer Normalization and Pre-Norm Formulation}
+The system employs Layer Normalization to stabilize training \cite{ref1}, specifically adopting "Pre-Normalization" where the input is normalized \textit{before} passing it to the sub-layer, rather than after. This configuration, implemented in the \texttt{ResidualConnection} module, allows gradients to flow more directly through the network, generally improving convergence in deeper models.
 
-In the inference pipeline, the decoder is bypassed entirely. The input sequence is processed solely by the Encoder stack to generate contextual representations, which are then passed directly to a linear projection layer. This layer outputs a scalar value for each station, representing the predicted drift offset, rather than generating a probability distribution over a vocabulary.
+\subsubsection{Multi-Head Attention}
+The core mechanism of the model is Multi-Head Attention (MHA), which allows the model to jointly attend to information from different representation subspaces. The implementation utilizes $h$ parallel heads. For each head, the input is projected into Query ($Q$), Key ($K$), and Value ($V$) matrices. The attention scores are computed using Scaled Dot-Product Attention:
+\begin{equation}
+    \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\end{equation}
 
-\subsubsection{Simulated Annealing and Cost Logic} 
-While the Transformer predicts the local drift impact of individual items, the global sequence scheduling is optimized using Simulated Annealing. This method explores the solution space of item permutations to minimize line stoppage risks.
+\subsubsection{Feed-Forward Block}
+Each encoder and decoder layer contains a position-wise Feed-Forward Network (FFN). This consists of two linear transformations with a ReLU activation function in between:
+\begin{equation}
+    FFN(x) = \text{ReLU}(xW_1 + b_1)W_2 + b_2
+\end{equation}
+The inner layer projects the input to a higher dimension ($d_{ff}$, typically $4 \times d_{model}$) before projecting it back, introducing additional non-linearity to the model.
 
-The optimization relies on a specialized cost matrix derived from the Transformer's predictions. The cost between two products, $A$ and $B$, is calculated using a "slack centering" heuristic. The system simulates the placement of product $B$ relative to product $A$ such that $B$ is centered within the available slack time, calculated as:
-$$
-\text{Offset}_B \approx \frac{\text{Offset}_A + \text{Size}_A - \text{Size}_B}{2}
-$$
-A penalty is incurred only if this simulated position violates the drift boundaries (defined as $[-Drift, Takt + Drift]$). To aggressively discourage valid-but-risky sequences, these violations are penalized quadratically ($violation^2$). By allowing for probabilistic acceptance of sub-optimal transitions, Simulated Annealing avoids the local optima that typically constrain greedy algorithms, resulting in a robust assembly line schedule.
+\subsubsection{The Pointer Head}
+The greatest deviation from the canonical Transformers is the removal of the vocabulary projection layer. It is replaced by a \texttt{PointerHead} module designed to select elements from the input sequence, inspired by the Pointer Network. \ref{sec:pointer}
+
+Instead of predicting a token, the Pointer Head computes a similarity score between the current decoder state, and the encoder outputs.
+\begin{equation}
+    \text{Scores} = \frac{(Dec_{out} W_q) \cdot (Enc_{out} W_k)^T}{\sqrt{d_{model}}}
+\end{equation}
+These raw logits scores represent the compatibility between the current decoding step and every element in the input sequence. When passed through a Cross-Entropy loss function during training, they effectively train the model to "point" to the correct input index for the next position in the sequence.
 
 
 
-\subsection{The Sequence-to-Sequence Model (FIXME)}
-\label{sec:seq}
 
-To establish a baseline for performance, we implemented a standard Sequence-to-Sequence (Seq2Seq) architecture tailored for regression. Unlike the Transformer approach which focuses on global context via self-attention, this model relies on Recurrent Neural Networks (RNNs) to process the station workload sequentially. The model operates as a "cost estimator," predicting the cumulative offset for a given sequence of stations, which is subsequently optimized using Simulated Annealing, as employed by the Transformer.
+\subsection{Sequence-to-Sequence}
+\label{sec:seq2seq}
 
-\subsubsection{Feature Representation}
-Before entering the recurrent layers, the raw station data is processed to combine categorical identities with continuous workload values. As defined in the wrapper implementation:
-\begin{itemize}
-    \item \textbf{Station Embedding:} The discrete station indices are passed through a learned embedding layer to capture latent station characteristics.
-    \item \textbf{Size Projection:} The continuous size values (workload) are projected through a linear layer to match the embedding dimension.
-    \item \textbf{Fusion:} These two feature sets are concatenated and passed through a projection layer to form the final input vector $x_t$ of dimension $d_{model}$.
-\end{itemize}
+The implemented model is a standard Sequence-To-Sequence model with modifications clarified in \ref{chap:workarounds}.
 
-\subsubsection{Encoder-Decoder Architecture}
-The core architecture consists of two Long Short-Term Memory (LSTM) networks:
-\begin{itemize}
-    \item \textbf{Encoder:} The encoder processes the input sequence $X = \{x_1, \dots, x_T\}$ and produces a sequence of hidden states $H = \{h_1, \dots, h_T\}$. It captures the temporal dependencies of the assembly line workload.
-    \item \textbf{Decoder:} The decoder operates autoregressively. At each time step $t$, it predicts the drift value based on its previous hidden state, the previous output, and a context vector $c_t$ derived from the encoder's output.
-\end{itemize}
+\subsubsection{Continuous Input Encoder}
+The encoder component (\texttt{EncoderRNN}) processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly. (FIXME)
 
 \subsubsection{Attention Mechanism}
-To mitigate the information bottleneck inherent in fixed-length vector encoding, the model utilizes an additive attention mechanism (Bahdanau Attention). For a decoder hidden state $s_{t-1}$ and encoder hidden states $h_j$, the attention energy $e_{tj}$ is calculated as:
-\begin{equation}
-    e_{tj} = v^T \tanh(W [s_{t-1}; h_j])
-\end{equation}
-where $W$ and $v$ are learnable parameters. These scores are normalized via softmax to produce attention weights $\alpha_{tj}$, which are used to compute the context vector $c_t$:
-\begin{equation}
-    c_t = \sum_{j=1}^{T} \alpha_{tj} h_j
-\end{equation}
-This context vector allows the decoder to "focus" on specific stations in the input sequence that are most relevant for predicting the current drift value.
+To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
 
-\subsubsection{Simulated Annealing}
-Like the Transformer, the Seq2Seq model is strictly used to estimate the number of conflicts. The actual optimization is handled by Simulated Annealing. The algorithm repeatedly swaps items in the sequence and uses the model to predict overlaps. It then accepts or rejects these changes based on a cooling schedule to avoid getting stuck in local minima.
+Rather than relying on a static summary of the input, the mechanism calculates a dynamic "relevance score" for every item in the input sequence. These scores effectively function as a spotlight, determining how much focus the model should place on each specific input element when generating the next part of the output.
 
+These scores are then converted into probabilities that sum to 100\%. Finally, the model computes a "Context Vector," which is a weighted average of the inputs based on these probabilities. This ensures that the model "mixes" the most important information together to guide the next prediction, prioritizing high-relevance inputs while ignoring irrelevant ones. (FIXME)
 
+\subsubsection{Context-Aware Decoder}
+The decoder (\texttt{DecoderRNN}) generates the output sequence step-by-step. To maximize the utility of the attention mechanism, the context vector $c_t$ is injected at two distinct points in the decoding step:
+\begin{enumerate}
+    \item \textbf{Input Feeding:} The context vector is concatenated with the input of the current time step before being passed to the LSTM.
+    \item \textbf{Output Projection:} The context vector is concatenated with the LSTM output before the final linear projection layer.
+\end{enumerate}
+This structure ensures that both the recurrent processing and the final prediction are directly conditioned on the relevant parts of the source input.
 
 
 \subsection{The Pointer Network Model}
-The proposed solution implements a Pointer Network architecture similar to the one proposed in (O. Vinyals et al, 2015). The model essentially follows a standard Encoder-Decoder structure enhanced with a content-based attention mechanism, designed to handle variable-length input sequences and output a permutation of the input indices. 
+\label{sec:pointer}
+
+The proposed solution implements a Pointer Network architecture adapted from Vinyals et al. (2015). \cite{ref7} The model follows an Encoder/Decoder paradigm enhanced with an attention mechanism, specifically designed to handle variable-length input sequences and output a permutation of the input indices.
 
 \subsubsection{Encoder Mechanism}
-The encoder processes the input sequence to generate a representation of the initial problem state.
+The encoder processes the input sequence to generate a latent representation of the problem state.
 \begin{enumerate}
-    \item \textbf{Input Projection:} Raw input features are first passed through a projection block consisting of a linear layer, a $tanh$ function, and Layer Normalization. This maps the input dimension to a higher-dimensional latent space ($d_{model}$).
-
-    \item \textbf{Bidirectional LSTM:} The projected features are fed into a Bi-directional LSTM. This allows the model to capture context from both past and future states in any given sequence. The final hidden states of the forward and backward passes are combined to form the initial context for the decoder.
+    \item \textbf{Input Projection:} Raw input features are first passed through a \texttt{Projector} block. This module consists of a Linear Transformation, an Tanh Activation, and Layer Normalization. \cite{ref1}
+    \item \textbf{Bidirectional LSTM:} The projected features are fed into a bidirectional LSTM. This allows the model to capture context from both past and future states in the sequence. 
 \end{enumerate}
 
 \subsubsection{Decoder and Attention Mechanism}
-The decoder generates the output sequence one item at a time. Unlike standard NLP models that generate new tokens from a fixed vocabulary, this decoder selects indices from the input sequence.
+The decoder generates the output permutation one index at a time. Unlike standard NLP models that generate new tokens from a fixed vocabulary, this decoder selects indices directly from the input sequence.
+
 \begin{itemize}
-    \item \textbf{State Initialization:} The decoder's initial hidden and cell states are initialized by projecting the final concatenated states of the encoder through learnable linear "bridge" layers.
-    \item \textbf{Glimpse Mechanism:} To improve the the attention mechanism, the model employs a "glimpse" step. At every time step, the decoder's current state queries the encoder outputs to calculate a context vector. This vector summarizes the most relevant parts of the input sequence for the current step.
-    \item \textbf{Pointer Selection:} The final selection is performed by a second attention layer. This layer combines the decoder's current state with the context vector from the glimpse step to compute a probability distribution over the input elements. The element with the highest probability is selected as the next index in the sequence.
+    \item \textbf{Glimpse Mechanism:} To enhance the pointing accuracy, the model employs a "glimpse" or "multi-hop" attention step. At every time step $t$, the decoder's current state $s_t$ queries the encoder outputs to calculate a context vector $c_t$:
+    \begin{equation}
+        c_t = \sum_{i=1}^{T} \text{Attention}(s_t, h_i) \cdot h_i
+    \end{equation}
+    This vector summarizes the most relevant parts of the input sequence for the current decision.
+    
+    \item \textbf{Pointer Selection:} The final selection is performed by a second attention layer. To fuse the information, the context vector $c_t$ is projected and added to the current decoder state to form a \textit{combined query}:
+    \begin{equation}
+        u_t = s_t + \tanh(W_{proj} \cdot c_t)
+    \end{equation}
+    This combined query $u_t$ is then used to compute the final attention scores (logits) over the input elements. The index with the highest probability is selected as the next element in the permutation.
 \end{itemize}
 
 \subsubsection{Masking and Inference}
-To ensure the validity of the resulting permutation, a masking mechanism is applied during inference. Once an input index is selected, it is masked out by setting its log-probability to $-\infty$, this will prevent the model from selecting the same element twice. The selected element's embedding is then used as the input for the next decoder time step.
+To ensure the validity of the resulting permutation (i.e., the Traveling Salesman constraint that every city is visited exactly once), a masking mechanism is applied during inference. 
 
-\subsubsection{The Dataset}
-To enable the Pointer Network to process the production schedules, the raw JSON data is transformed into structured numerical tensors through a custom preprocessing pipeline. This pipeline is responsible for extracting the relevant features from each object, normalizing the station processing times, and organizing the sequences into batches for efficient model training. (FIXME)
-\begin{itemize}
-    \item \textbf{Tensor Representation} \\
-    Each input sequence is converted into a numerical tensor of shape $(L, N)$, where $L$ denotes the sequence length (number of objects) and $N$ corresponds to the normalized processing times for each station ($S_1$, \dots, $S_N$). For batch processing on the GPU, these tensors are padded to a uniform length $L_{max}$ and stacked, resulting in a final input structure of dimensions $(B, L_{max}, N)$, where $B$ represents the batch size.
+Once an input index $k$ is selected, it is masked out by setting its log-probability to $-\infty$ ($1e^{-9}$) for all subsequent steps. This hard constraint prevents the model from selecting the same element twice. Furthermore, the model is auto-regressive: the feature vector of the selected element $h_k$ is used as the input to the decoder for the next time step $t+1$.
 
-    \item \textbf{Propagation and Usage} \\
-    Upon entering the Pointer Network, this raw feature tensor is first processed by the \textit{Projector} module. A linear layer expands the input dimension $S$ into a higher-dimensional latent representation ($d_{model}$). This projected embedding is subsequently passed through a \texttt{Tanh} activation and \texttt{LayerNorm} before being consumed by the Bidirectional LSTM encoder, which generates the context-aware hidden states required for the attention mechanism.
-\end{itemize}
 
+
+
+% TRAINING
 \section{The Training Loop}
-(FIXME), (see \ref{chap:workarounds})
-\subsection{The Pointer Network}
-    TODO
-\subsection{The Transformer Model}
-    TODO
-\subsection{The Sequence-To-Sequence Model} 
-    TODO
+
+TODO
+
+
+
+
 
 \section{The Application Programming Interface (API)}
 The system exposes its core functionalities through a RESTful API, facilitating programmatic interaction with the implemented neural architectures. This interface serves as the primary gateway for data ingestion and inference execution.
@@ -993,7 +1000,7 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 \chapter{Discussion}
 \section{Interpretation of Results}
 
-The results show that the Pointer Network was the only architecture to perform within the target parameters for the task at hand. It consistently achieved an average improvement of $80\%$, significantly outperforming the baselines. In contrast, both the Transformer and standard Sequence-To-Sequence (Seq2Seq) models yielded negligible gains, averaging only a incremental improvement. This performance is comparable to random shuffling, indicating a failure to learn the underlying optimization logic unsupervised.
+the results show that the pointer network was the only architecture to perform within the target parameters for the task at hand. it consistently achieved an average improvement of $80\%$, significantly outperforming the baselines. in contrast, both the transformer and standard sequence-to-sequence (seq2seq) models yielded negligible gains, averaging only a incremental improvement. this performance is comparable to random shuffling, indicating a failure to learn the underlying optimization logic unsupervised.
 
     This difference in performance highlights why choosing the right architecture matters. While a Transformer could theoretically solve the task given enough data and processing power, the Pointer Network proved to be a better fit for this optimization problem. This is in part because the Transformer was originally designed for Natural Language Processing \cite{ref5}, whereas the Pointer Network was specifically introduced to handle combinatorial problems where the output is a permutation of the input—most notably the Traveling Salesman Problem. \cite{ref7} Even though the Pointer Network is based on a Sequence-to-Sequence model, they simply don't compare in terms of performance.
 
@@ -1013,6 +1020,7 @@ Future iterations of this research should prioritize larger datasets and utilize
 
 
 \begin{thebibliography}{99}
+\bibitem{ref1} J. L. Ba, J. R. Kiros, and G. E. Hinton, \textit{Layer Normalization}, arXiv preprint arXiv:1607.06450, 2016.
 \bibitem{ref2}
 A. Dupuis, C. Dadouchi, and B. Agard, 
         \textit{A decision support system for sequencing production in the manufacturing industry},
@@ -1047,6 +1055,8 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref14} Y. Youssef, P. R. M. de Araujo, A. Noureldin, S. Givigi,
     \textit{TRATSS: Transformer-Based Task Scheduling System for Autonomous Vehicles},
     arXiv preprint arXiv:2504.05407, 2025.
+\bibitem{ref15} D. Kingma, J. L. Ba, \textit{ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION}, In ICLR, 2015.
+\bibitem{ref16} D. Bahdanau, K. Cho, and Y. Bengio, \textit{Neural Machine Translation by Jointly Learning to Align and Translate}, arXiv preprint arXiv:1409.0473, 2016.
 \bibitem{refx} Author, Title, Journal, Year.
 
 
