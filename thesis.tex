@@ -33,7 +33,7 @@
 
 \begin{document}
 
-\title{Applying Deep Learning on Sequential Data within the Mixed-Model Assembly Line problem}
+\title{Product Sequencing on a Mixed-Model Assembly Line using Deep Learning}
 \author{Christoffer Lindkvist}
 \date{\today}
 \maketitle
@@ -63,7 +63,7 @@ The methods used in assembly today are strictly rules-based, and due to a large 
 \section{Research Problem}
 Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a time-based approach can help reduce the number of station overloads (\ref{chap:overlap}), and conflicts.
 
-\clearpage %TODO: Ta bort om nödvändigt
+\clearpage 
 \section{Objectives} %FIXME
 The objectives of this thesis are:
 \begin{enumerate}
@@ -288,7 +288,7 @@ In recent years, Deep Reinforcement Learning (DRL) has become a dominant approac
 
 For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by random task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
-However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Unsupervised Learning was chosen instead.
+However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Supervised Learning was chosen instead.
 
 While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
 
@@ -351,7 +351,7 @@ For data generation the following constants are used:
 \begin{table}[htbp]
     \centering
     \caption{Table of Constants used in Data Generation}
-    \label{tab:generation_constants}
+    \label{tab:genconsts}
     \begin{tabular}{l c l} % Left-aligned, Centered, Left-aligned
         \toprule
         \textbf{Constant} & \textbf{Default Value} & \textbf{Description} \\ 
@@ -426,7 +426,7 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
   \draw[|-|] (4.5, -0.7) -- (6.2, -0.7) node[midway, below] {$O + T - S$};
 
 \end{tikzpicture}
-    \caption{Allocation positioning before the centering process (FIXME)}
+    \caption{Allocation positioning before the centering process} %FIXME
 \end{minipage}\hfill
 \begin{minipage}{0.48\textwidth}
 \centering
@@ -453,6 +453,7 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
 \end{figure}
 
 \subsection{Constructive Data Generation as a Solved Puzzle} %FIXME
+\label{sub:datagen}
 
 To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than randomly placing tasks and checking for validity, the system employs a constructive generation algorithm. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training.
 
@@ -461,6 +462,7 @@ The placement of any given allocation $A_{i,j}$ (Object $i$ at Station $j$) is n
 \begin{enumerate}
     \item \textbf{Station Availability:} The station $j$ must be free. Therefore, $A_{i,j}$ cannot start until the previous object $i-1$ has departed station $j$.
     \item \textbf{Object Availability:} The object $i$ must be ready. Therefore, $A_{i,j}$ cannot start until object $i$ has finished processing at the previous station $j-1$.
+    \item \textbf{The Gap} To control the density of the generated data a gap is added (dependent on the values found in \ref{tab:genconsts}).
 \end{enumerate}
 
 Mathematically, the earliest valid start time ($t_{start}$) for the new allocation is defined as the maximum of these two completion timestamps, plus a configured safety gap:
@@ -562,14 +564,14 @@ This process results in a dataset where every input (the sequence of objects) ha
     \caption{Case 2: The gray object is borrowing time from the white object in $S_n$. Even though it finished in $S_{n-1}$, the white object cannot begin assembly right away in $S_n$ as it's dependent on the gray object finishing at $S_n$.}
 \end{minipage}
 \end{figure}
-\section{JSON to Vector Methodology}
-Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Considering a sequence of JSON objects on an assembly line, each object can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences derived from historical data, a model can be trained to learn a mapping from an input configuration of JSONs to a desired output order.
+% \section{JSON to Vector Methodology}
+% Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Considering a sequence of JSON objects on an assembly line, each object can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences derived from historical data, a model can be trained to learn a mapping from an input configuration of JSONs to a desired output order.
 
-\section{Adapting Language-Based Models for Sequencing}
+\section{Adapting Language-Based Models for Sequencing} %FIXME
 
 Two of the models examined in this thesis were originally designed for natural language processing (NLP) tasks, such as machine translation. These models typically rely on a predefined vocabulary. This reliance proves problematic when the data does not consist of frequently occurring words, but rather unique objects with distinct properties. This raises the question of whether a list of products can be treated analogously to a collection of words, where each product variation constitutes a distinct element within the vocabulary. While this approach allows the model to replicate historical patterns, it risks learning inherent data biases or flaws.
 
-Furthermore, specific constraints must be imposed. Language models tend to overproduce common tokens (e.g., “the”) because they are statistically probable in general English text. To avoid this bias in a combinatorial context, the model must be constrained to generate valid permutations relevant to the specific application (see \ref{chap:workarounds}).
+Furthermore, specific constraints must be imposed. Language models tend to overproduce common tokens (e.g., “the”) because they are statistically probable in general English text. To avoid this bias in a combinatorial context, the model must be adapted to generate valid permutations relevant to the specific application (see \ref{chap:workarounds}).
 
 \section{Workarounds}
 \label{chap:workarounds}
@@ -585,8 +587,15 @@ The Sequence-To-Sequence model is implemented here without an Embedding layer. I
 The Sequence-To-Sequence model employs a "soft" feedback loop during sequence generation. In traditional language processing, the decoder typically commits to a single discrete choice by selecting the most probable word and treating it as the ground truth for the subsequent step. In this context, however, rigid early choices can trap the model in sub-optimal paths. To mitigate this, the model feeds the full probability distribution into the next step rather than a single discrete selection. By propagating uncertainty rather than discarding it, the system can dynamically refine its strategy as the output sequence is constructed.
 
 \subsection{The Pointer Head}
+\label{sub:phead}
 
-TODO
+The greatest deviation from the canonical Transformers is the removal of the vocabulary projection layer. It is replaced by a \texttt{PointerHead} module designed to select elements from the input sequence, inspired by the Pointer Network. \ref{sec:pointer}
+
+Instead of predicting a token, the Pointer Head computes a similarity score between the current decoder state, and the encoder outputs.
+\begin{equation}
+    \text{Scores} = \frac{(Dec_{out} W_q) \cdot (Enc_{out} W_k)^T}{\sqrt{d_{model}}}
+\end{equation}
+These raw logits scores represent the compatibility between the current decoding step and every element in the input sequence. When passed through a Cross-Entropy loss function during training, they effectively train the model to "point" to the correct input index for the next position in the sequence.
 
 \chapter{System Architecture}
 
@@ -645,15 +654,8 @@ Each encoder and decoder layer contains a position-wise Feed-Forward Network (FF
 The inner layer projects the input to a higher dimension ($d_{ff}$, typically $4 \times d_{model}$) before projecting it back, introducing additional non-linearity to the model.
 
 \subsubsection{The Pointer Head}
-The greatest deviation from the canonical Transformers is the removal of the vocabulary projection layer. It is replaced by a \texttt{PointerHead} module designed to select elements from the input sequence, inspired by the Pointer Network. \ref{sec:pointer}
 
-Instead of predicting a token, the Pointer Head computes a similarity score between the current decoder state, and the encoder outputs.
-\begin{equation}
-    \text{Scores} = \frac{(Dec_{out} W_q) \cdot (Enc_{out} W_k)^T}{\sqrt{d_{model}}}
-\end{equation}
-These raw logits scores represent the compatibility between the current decoding step and every element in the input sequence. When passed through a Cross-Entropy loss function during training, they effectively train the model to "point" to the correct input index for the next position in the sequence.
-
-
+This implementation of the Transformer replaces the vocabulary projection layers in favour of a Pointer Head in order to handle combinatorial tasks rather than NLP-based tasks. See \ref{sub:phead}
 
 
 \subsection{Sequence-to-Sequence}
@@ -662,14 +664,14 @@ These raw logits scores represent the compatibility between the current decoding
 The implemented model is a standard Sequence-To-Sequence model with modifications clarified in \ref{chap:workarounds}.
 
 \subsubsection{Continuous Input Encoder}
-The encoder component (\texttt{EncoderRNN}) processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly. (FIXME)
+The encoder component (\texttt{EncoderRNN}) processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly. 
 
 \subsubsection{Attention Mechanism}
 To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
 
 Rather than relying on a static summary of the input, the mechanism calculates a dynamic "relevance score" for every item in the input sequence. These scores effectively function as a spotlight, determining how much focus the model should place on each specific input element when generating the next part of the output.
 
-These scores are then converted into probabilities that sum to 100\%. Finally, the model computes a "Context Vector," which is a weighted average of the inputs based on these probabilities. This ensures that the model "mixes" the most important information together to guide the next prediction, prioritizing high-relevance inputs while ignoring irrelevant ones. (FIXME)
+These scores are then converted into probabilities that sum to 100\%. Finally, the model computes a "Context Vector," which is a weighted average of the inputs based on these probabilities. This ensures that the model "mixes" the most important information together to guide the next prediction, prioritizing high-relevance inputs while ignoring irrelevant ones. %FIXME
 
 \subsubsection{Context-Aware Decoder}
 The decoder (\texttt{DecoderRNN}) generates the output sequence step-by-step. To maximize the utility of the attention mechanism, the context vector $c_t$ is injected at two distinct points in the decoding step:
@@ -714,16 +716,59 @@ To ensure the validity of the resulting permutation (i.e., the Traveling Salesma
 
 Once an input index $k$ is selected, it is masked out by setting its log-probability to $-\infty$ ($1e^{-9}$) for all subsequent steps. This hard constraint prevents the model from selecting the same element twice. Furthermore, the model is auto-regressive: the feature vector of the selected element $h_k$ is used as the input to the decoder for the next time step $t+1$.
 
+\clearpage
+\section{The Dataset}
+To train the models, a custom PyTorch Dataset was implemented to handle combinatorial data. This pipeline is responsible for converting raw input jsons into tensors. The dataset looks more or less the same for all models.
 
+\subsection{Data Processing}
+The dataset is initialized with raw JSON files containing sequences of station data. The pipeline flattens these structures into a stack of tensors, where each tensor represents a single task sequence with the shape:
 
+\begin{equation}
+    X = \begin{bmatrix}
+    x_{1,1} & x_{1,2} & \dots & x_{1,N} \\
+    x_{2,1} & x_{2,2} & \dots & x_{2,N} \\
+    \vdots & \vdots & \ddots & \vdots \\
+    x_{M,1} & x_{M,2} & \dots & x_{L,N}
+    \end{bmatrix}
+\end{equation}
 
-% TRAINING
+Where $N$ is the number of stations and $M$ is the the number of objects. 
+
+The feature extraction is performed by selecting specific keys ($s_1 \dots s_N$) from the raw data objects. To ensure numerical stability and faster converges the data is then normalized using: 
+\begin{equation}
+    x_{norm} = \frac{x_{raw}}{1000.0}
+\end{equation}
+Due to memory constraints, the sequences exceeding the maximum defined length are chunked into smaller subsequences to manage memory constraints effectively.
+
+\subsection{Shuffled Task Generation}
+ The dataset stores the ground truth sequences in their correct, sorted order. However, the data is effectively augmented during the training phase by randomly shuffling the input sequence at every iteration. This stochastic approach ensures that the model encounters the same sequence twice.
+
+To accommodate this shuffling, the target vector is dynamically generated to represent the specific indices required to reconstruct the original order from the disordered input. If the shuffled input is denoted as $X'$ and the original sorted sequence as $X$, the target index $y_t$ for time step $t$ is calculated to satisfy the condition:
+\begin{equation}
+    X'[y_t] = X_t
+\end{equation}
+This formulation specifically trains the Pointer Mechanism of the Transformer and Pointer Network to identify the location of the next correct element within the provided input set. (And then "point" to it)
+
 \section{The Training Loop}
+\label{sec:training}
 
-TODO
+To ensure a fair and consistent evaluation, a standardized training pipeline is implemented across all three architectures (Seq2Seq, Pointer Network, and Transformer). The training logic is built using the PyTorch framework and orchestrates data loading, gradient optimization, and model persistence.
 
+\subsection{Optimization and Objective Function}
+Model parameters are optimized using the \textbf{AdamW} algorithm \cite{ref15}. This optimizer was selected for its ability to decouple weight decay from adaptive gradient updates, a modification that consistently yields better generalization than the standard Adam implementation. The learning rate is set to $1 \times 10^{-4}$ and the weight decay is set to $1 \times 10^{-2}$.
 
+The model is trained to minimize the \textbf{Cross-Entropy Loss} between the output logits and the target sequence. A masking constraint (\texttt{ignore\_index=-1}) is applied to handle variable sequence lengths within batches. This effectively isolates the padding tokens from the objective function, ensuring the optimization focuses solely on valid data elements rather than padding.
 
+\subsection{Regularization and Stabilization}
+Training deep neural networks, particularly those involving recurrence (RNNs), can be unstable due to the exploding gradient problem. \cite{ref17} To mitigate this, Gradient Clipping is applied to the model parameters. This acts as a safety mechanism that caps the maximum possible step size during backpropagation. By preventing drastic weight updates, it ensures that outliers in the training data or instabilities in the recurrent layers do not cause the optimization process to diverge.
+
+\subsection{Transformer Specifics: Masking strategy}
+Unlike the recurrent models, which process data sequentially by definition, the Transformer processes the entire sequence in parallel. To replicate the sequential nature of the problem and prevent information leakage, a dual-masking strategy is implemented within the training loop via the \texttt{make\_masks} function:
+
+\begin{enumerate}
+    \item \textbf{Padding Mask (Source):} This mask identifies padding tokens in the input batch. It forces the self-attention mechanism to assign zero attention weights to these positions, ensuring the model focuses only on valid tasks.
+    \item \textbf{Look-Ahead Mask (Target):} To preserve the auto-regressive property, a triangular "no-peak" mask is applied to the decoder. This ensures that when generating the prediction for position $t$, the model can only attend to positions $0$ through $t-1$, effectively hiding future ground-truth tokens.
+\end{enumerate}
 
 
 \section{The Application Programming Interface (API)}
@@ -733,16 +778,16 @@ The system exposes its core functionalities through a RESTful API, facilitating 
 
 \subsubsection{/run/\{model\_type\}}
 
-This POST endpoint provides a unified interface for sequence processing across different model architectures (\textbf{Transformer}, \textbf{Pointer Network}, or \textbf{Seq2Seq}). Once selected it returns a processed sequence made from the input data, including refitting. 
+This POST endpoint provides a unified interface for sequence processing across different model architectures (\textbf{Transformer}, \textbf{Pointer Network}, or \textbf{Seq2Seq}). Once selected it returns a processed sequence made from the input data, including refitting. 
 
 \subsubsection{/run/\{model\_type\}/$int:n$/}
 
-This POST endpoint is the same as the one above it, but it accepts an integer $n$, which runs the model $n$ times and returns $n$ suggested sequences. (FIXME)
+This POST endpoint extends the interface to support multiple sequence generation. It accepts an integer parameter $n$, executing the selected model architecture $n$ times to return a list of $n$ alternative processed sequences.
 
 
 \subsubsection{/check/}
 
-This POST endpoint will count the number of \textbf{overlaps} on a given sequence, based on configuration data. 
+This POST endpoint will count the number of \textbf{overlaps} on a given sequence, based on configuration data.
 
 
 \chapter{Experiments and results}
@@ -750,6 +795,13 @@ This POST endpoint will count the number of \textbf{overlaps} on a given sequenc
 Performance is measured by how well the model can take an input with overlapping data and rearrange the tasks to minimize overlaps. The reduction metric is defined at \ref{sec:eval}.
 
 Although the operational constraints of the target problem typically limit sequences to batches of roughly 100 objects, the following results also evaluate the model's scalability beyond this range.
+
+The values in the tables below is based on the ratio found at \ref{sec:eval} $\frac{O_P}{O_S}$, where $O_S$ is the number of overlaps found in a freshly generated shuffled dataset, and $O_P$ is the number of overlaps found after predicting and processing the items in said dataset. With the improvement rate being defined as 
+\begin{equation}
+    Improvement = ( 1 - \frac{O_P}{O_S} ) \cdot 100 \%
+\end{equation}
+
+he testing data has an optimal solution before getting shuffled where $O_P = 0$. The data is generated using a random number generator, using no seed, to ensure variability across test runs.
 
 \subsection{Pointer Network Performance}
 
@@ -843,11 +895,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $53/63$ & $15.87\%$ \\
-            Run \#2 & $52/57$ & $8.77\%$ \\
-            Run \#3 & $49/49$ & $0\%$ \\
+            Run \#1 & $7/80$ & $91.25\%$ \\
+            Run \#2 & $4/58$ & $93.10\%$ \\
+            Run \#3 & $8/64$ & $87.50\%$ \\
             \midrule
-            \textbf{Avg} & & $8.21\%$ \\
+            \textbf{Avg} & & $90.62\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -860,11 +912,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $449/542$ & $17.26\%$ \\
-            Run \#2 & $451/515$ & $12.43\%$ \\
-            Run \#3 & $495/534$ & $7.3\%$ \\
+            Run \#1 & $73/721$ & $89.88\%$ \\
+            Run \#2 & $76/734$ & $89.85\%$ \\
+            Run \#3 & $71/706$ & $89.94\%$ \\
             \midrule
-            \textbf{Avg} & & $12.33\%$ \\
+            \textbf{Avg} & & $89.89\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -879,11 +931,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $5075/5383$ & $5.72\%$ \\
-            Run \#2 & $5081/5404$ & $5.98\%$ \\
-            Run \#3 & $5168/5441$ & $5.02\%$ \\
+            Run \#1 & $693/7276$ & $90.48\%$ \\
+            Run \#2 & $686/7137$ & $90.39\%$ \\
+            Run \#3 & $656/7268$ & $90.97\%$ \\
             \midrule
-            \textbf{Avg} & & $5.57\%$ \\
+            \textbf{Avg} & & $90.61\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -896,11 +948,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $54216/54886$ & $1.22\%$ \\
-            Run \#2 & $62878/62763$ & $-0.18\%$ \\
-            Run \#3 & $62635/62827$ & $0.31\%$ \\
+            Run \#1 & $5259/72219$ & $92.72\%$ \\
+            Run \#2 & $5553/72584$ & $92.36\%$ \\
+            Run \#3 & $5518/72422$ & $92.38\%$ \\
             \midrule
-            \textbf{Avg} & & $0.45\%$ \\
+            \textbf{Avg} & & $92.49\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -921,11 +973,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $52/58$ & $10.34\%$ \\
-            Run \#2 & $49/60$ & $18.33\%$ \\
-            Run \#3 & $42/51$ & $17.65\%$ \\
+            Run \#1 & $23/78$ & $70.51\%$ \\
+            Run \#2 & $16/71$ & $77.46\%$ \\
+            Run \#3 & $19/71$ & $73.24\%$ \\
             \midrule
-            \textbf{Avg} & & $15.44\%$ \\
+            \textbf{Avg} & & $73.74\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -938,11 +990,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $580/625$ & $7.20\%$ \\
-            Run \#2 & $573/624$ & $8.17\%$ \\
-            Run \#3 & $525/610$ & $13.93\%$ \\
+            Run \#1 & $200/708$ & $71.75\%$ \\
+            Run \#2 & $190/760$ & $75.00\%$ \\
+            Run \#3 & $203/717$ & $71.69\%$ \\
             \midrule
-            \textbf{Avg} & & $9.75\%$ \\
+            \textbf{Avg} & & $72.81\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -957,11 +1009,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $5916/6309$ & $6.23\%$ \\
-            Run \#2 & $6024/6342$ & $5.01\%$ \\
-            Run \#3 & $6014/6243$ & $3.67\%$ \\
+            Run \#1 & $2098/7171$ & $70.74\%$ \\
+            Run \#2 & $1987/7236$ & $72.54\%$ \\
+            Run \#3 & $2063/7362$ & $71.96\%$ \\
             \midrule
-            \textbf{Avg} & & $4.97\%$ \\
+            \textbf{Avg} & & $71.75\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -974,11 +1026,11 @@ Although the operational constraints of the target problem typically limit seque
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $62120/62923$ & $1.28\%$ \\
-            Run \#2 & $61836/62674$ & $1.34\%$ \\
-            Run \#3 & $61652/62797$ & $1.82\%$ \\
+            Run \#1 & $20495/72675$ & $71.80\%$ \\
+            Run \#2 & $20542/72830$ & $71.79\%$ \\
+            Run \#3 & $20262/72554$ & $72.07\%$ \\
             \midrule
-            \textbf{Avg} & & $1.44\%$ \\
+            \textbf{Avg} & & $71.89\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -986,7 +1038,7 @@ Although the operational constraints of the target problem typically limit seque
 
 
 \section{Dataset}
-We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better.
+We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better. How the data was generated is further discussed im \ref{sub:datagen}
 
 
 \section{Evaluation Metrics}
@@ -1000,11 +1052,7 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 \chapter{Discussion}
 \section{Interpretation of Results}
 
-the results show that the pointer network was the only architecture to perform within the target parameters for the task at hand. it consistently achieved an average improvement of $80\%$, significantly outperforming the baselines. in contrast, both the transformer and standard sequence-to-sequence (seq2seq) models yielded negligible gains, averaging only a incremental improvement. this performance is comparable to random shuffling, indicating a failure to learn the underlying optimization logic unsupervised.
-
-    This difference in performance highlights why choosing the right architecture matters. While a Transformer could theoretically solve the task given enough data and processing power, the Pointer Network proved to be a better fit for this optimization problem. This is in part because the Transformer was originally designed for Natural Language Processing \cite{ref5}, whereas the Pointer Network was specifically introduced to handle combinatorial problems where the output is a permutation of the input—most notably the Traveling Salesman Problem. \cite{ref7} Even though the Pointer Network is based on a Sequence-to-Sequence model, they simply don't compare in terms of performance.
-
-While the Transformer and Seq2Seq model could potentially yield improved results through extensive optimization and a larger training set, the computational cost may not be worth the marginal gains. Given that the core objective of this thesis essentially was permutational reordering of fixed time slots, then the Pointer Network is more theoretically aligned with the problem space. The Transformer's generative versatility offers no distinct advantage in this specific context, particularly as the Pointer Network similarly utilizes an attention mechanism to effectively solve these combinatorial constraints.
+TODO
 
 \section{Limitations}
 \subsection{Hardware and Resource Limitations}
@@ -1056,7 +1104,8 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
     \textit{TRATSS: Transformer-Based Task Scheduling System for Autonomous Vehicles},
     arXiv preprint arXiv:2504.05407, 2025.
 \bibitem{ref15} D. Kingma, J. L. Ba, \textit{ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION}, In ICLR, 2015.
-\bibitem{ref16} D. Bahdanau, K. Cho, and Y. Bengio, \textit{Neural Machine Translation by Jointly Learning to Align and Translate}, arXiv preprint arXiv:1409.0473, 2016.
+\bibitem{ref16} D. Bahdanau, K. Cho, Y. Bengio, \textit{Neural Machine Translation by Jointly Learning to Align and Translate}, arXiv preprint arXiv:1409.0473, 2016.
+\bibitem{ref17} R. Pascanu, T. Mikolov, Y. Bengio, \textit{On the difficulty of training Recurrent Neural Networks}, In ICML, 2013.
 \bibitem{refx} Author, Title, Journal, Year.
 
 
