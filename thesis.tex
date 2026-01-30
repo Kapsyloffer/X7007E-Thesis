@@ -159,7 +159,7 @@ The same problem can be seen at $T$ with $F$ and $G$ as both items need to borro
 
 Do note that on $T$, $E$ does not utilize the drift area which results in it sitting flush with $F$ on the timeline, this may look good on paper but can result in overlap in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
 
-The same issue derives at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
+The same issue occurs at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
 \section{Jump-in and Jump-out} % FIXME
 In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order remains unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}.
@@ -227,7 +227,7 @@ However, if two items are processed consecutively at station $S_n$, and both of 
 
 In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow the operation to complete before the assembly line may continue again. 
 
-Overlap are simply put how station overloads are visualized in this thesis, as we follow the constraint that no matter what, an allocation can never exceed $Takt + 2 * Drift$ in size, and an allocation can never go past the right-most limit of the drift area on the coming station.
+Overlaps are how station overloads are visualized in this thesis, as we follow the constraint that no matter what, an allocation can never exceed $Takt + 2 * Drift$ in size, and an allocation can never go past the right-most limit of the drift area on the coming station.
 
 
 \begin{figure}[htbp]
@@ -286,9 +286,9 @@ The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formall
 
 In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
 
-For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
+For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Algorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
-However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Supervised Learning was chosen instead.
+However, reinforcement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Supervised Learning was chosen instead.
 
 While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
 
@@ -340,7 +340,7 @@ While Transformers excel at context, they still typically rely on generating tok
 
 Implemented using an encoder-decoder structure of the sequence-to-sequence model, the Pointer Network utilizes a specialized attention mechanism to generate context vectors that "point" to specific elements in the input sequence rather than predicting a value from a dictionary. 
 
-This model is explicitly designed with combinatorial problems in mind, such as the traveling salesman problem, convex hull, and other combinatorial optimization problems. \cite{ref7} It can thus be used to well-suited for the mixed-model assembly line problem (MMAL), as the object attributes (such as station order, or time to complete) are immutable, and the only thing that matters for our case is the permutation/rearrangement.
+This model is explicitly designed with combinatorial problems in mind, such as the traveling salesman problem, convex hull, and other combinatorial optimization problems. \cite{ref7} It is thus well-suited for the mixed-model assembly line problem (MMAL), as the object attributes (such as station order, or time to complete) are immutable, and the only thing that matters for our case is the permutation/rearrangement.
 
 
 \chapter{Methodology}
@@ -360,7 +360,7 @@ For data generation the following constants are used:
         Stations   & $39$      & Number of stations \\
         Takt       & $700$     & The cycle time ($Cmin$) \\
         Drift      & $200$     & The size of the drift area ($Cmin$) \\
-        Gap        & $10$      & Time-buffer ($Cmin$) between genreated objects \\
+        Gap        & $10$      & Time-buffer ($Cmin$) between generated objects \\
         min\_size  & $100$     & Smallest possible Object ($Cmin$) \\
         max\_size  & $Takt + 2 \times Drift$ & Largest possible Object ($Cmin$) \\
         Multiplier & $5000$    & Constant value to multiply \textit{Objects} with, used for Training.\\
@@ -457,7 +457,7 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
 \subsection{Constructive Data Generation as a Solved Puzzle} %FIXME
 \label{sub:datagen}
 
-To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than placing tasks stochastically and checking for validity, the system employs a constructive generation algorithm which builds one object at the time. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training. Due to how the entire sequence generates left to right the risk for overlaps is nonexistant.
+To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than placing tasks stochastically and checking for validity, the system employs a constructive generation algorithm which builds one object at the time. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training. Due to how the entire sequence generates left to right the risk for overlaps is nonexistent.
 
 \subsubsection*{Dependency-Based Positioning}
 The placement of any given allocation $A_{i,j}$ (Object $i$ at Station $j$) is not independent. It is strictly constrained by two spatial-temporal boundaries derived from the existing grid state:
@@ -571,14 +571,16 @@ This process results in a dataset where every input (the sequence of objects) ha
 
 \section{Adapting Language-Based Models for Sequencing} %FIXME
 
-Two of the models examined in this thesis were originally designed for natural language processing (NLP) tasks, such as machine translation. These models typically rely on a predefined vocabulary. This reliance proves problematic when the data does not consist of frequently occurring words, but rather unique objects with distinct properties. This raises the question of whether a list of products can be treated analogously to a collection of words, where each product variation constitutes a distinct element within the vocabulary. While this approach allows the model to replicate historical patterns, it risks learning inherent data biases or flaws.
+Two of the models examined in this thesis, the Sequence-To-Sequence model, and Transformer model, were originally designed for natural language processing (NLP) tasks, such as machine translation. These models typically rely on a predefined vocabulary. 
+
+This reliance proves problematic when the data does not consist of frequently occurring words, but rather \textit{unique} objects with distinct properties. This raises the question of whether a list of products can be treated analogously to a collection of words, where each product variation constitutes a distinct element within the vocabulary. While this approach allows the model to replicate historical patterns, it risks learning inherent data biases or flaws.
 
 Furthermore, specific constraints must be imposed. Language models tend to overproduce common tokens (e.g., “the”) because they are statistically probable in general English text. To avoid this bias in a combinatorial context, the model must be adapted to generate valid permutations relevant to the specific application (see \ref{chap:workarounds}).
 
 \section{Workarounds}
 \label{chap:workarounds}
 
-The Transformer and Sequence-To-Sequence models have been adapted from their original NLP architectures to address this combinatorial problem. The Pointer Network remains unaffected by these modifications.
+The Transformer and Sequence-To-Sequence models have been adapted from their original NLP architectures to a permutation architecture in order to address combinatorial problems. The Pointer Network remains unaffected by these modifications.
 
 \subsection{Direct Continuous Input}
 
@@ -607,20 +609,27 @@ The models in this thesis are implemented using PyTorch.
 
 \begin{table}[htbp]
     \centering
-    \caption{Table of Constants used for Machine Learning (Excluding paths)}
+    \caption{Hyperparameters and Model Constants}
     \label{tab:generation_constants}
-    \begin{tabular}{l c} % Left-aligned, Centered, Left-aligned
+    \begin{tabular}{l c c c} 
         \toprule
-        \textbf{Constant} & \textbf{Default Value} \\ 
+        \textbf{Constant} & \textbf{Transformer} & \textbf{Sequence-To-Sequence} & \textbf{Pointer Network} \\ 
         \midrule
-        batch\_size &  $16$ \\
-        num\_epochs & $10$ \\
-        lr & $1e^{-4}$ \\
-        d\_model & $128$ \\
-        dropout & $0.1$ \\
+        batch\_size & $16$ & $16$ & $8$ \\
+        num\_epochs & $10$ & $10$ & $10$ \\
+        lr & $1e^{-3}$ & $1e^{-4}$ & $1e^{-4}$ \\
+        d\_model & $256$ & $256$ & $256$ \\
+        dropout & $0.1$ & $0.2$ & $ $ \\
+        hidden\_dim & $ $ & $128$ & $128$ \\
+        d\_ff & $512$ & $ $ & $ $ \\
+        n\_heads & $8$ & $ $ & $ $ \\
+        n\_layers & $3$ & $ $ & $ $ \\
         \bottomrule
     \end{tabular}
 \end{table}
+
+
+
 
 \subsection{The Transformer Model}
 \label{sec:trans}
@@ -658,6 +667,8 @@ The inner layer projects the input to a higher dimension ($d_{ff}$, typically $4
 \subsubsection{The Pointer Head}
 
 This implementation of the Transformer replaces the vocabulary projection layers in favour of a Pointer Head in order to handle combinatorial tasks rather than NLP-based tasks. See \ref{sub:phead}
+
+
 
 
 \subsection{Sequence-to-Sequence}
@@ -1041,7 +1052,7 @@ he testing data has an optimal solution before getting shuffled where $O_P = 0$.
 
 \section{Dataset}
 \label{sec:dataset}
-We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better. How the data was generated is further discussed im \ref{sub:datagen}
+We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better. How the data was generated is further discussed in \ref{sub:datagen}
 
 
 \section{Evaluation Metrics}
@@ -1055,16 +1066,16 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 \chapter{Discussion}
 \section{Interpretation of Results}
 
-The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an improvement rate of 93\%; while this figure is exceptionally high, it has been verified against a stochastically generated test set that should thus distinct from the training data apart from the predefined limits \cite{tab:genconsts}. This suggests the model has successfully generalized the underlying logic rather than memorizing patterns. The remaining models exhibited performance metrics in the 70--80\% range, falling within a more expected distributions. Crucially, all architectures consistently maintained valid allocations within the defined operational constraints.
+The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an improvement rate of 93\%; while this figure is exceptionally high, it has been verified against a stochastically generated test set that should thus distinct from the training data apart from the predefined limits \ref{tab:genconsts}. This suggests the model has successfully generalized the underlying logic rather than memorizing patterns. The remaining models exhibited performance metrics in the 70--80\% range, falling within a more expected distributions. Crucially, all architectures consistently maintained valid allocations within the defined operational constraints.
 
 \section{Limitations}
 \subsection{Testing and Training Data}
 Due to the limited size and inconsistency of available production data, this study relies on generated synthetic data (see \ref{sec:dataset}). Although this dataset was rigorously designed to adhere to operational constraints, the absence of real-world validation, and edge-cases not accounted for within sequencing, limits our ability to empirically confirm the models' performance in a live production environment.
 
-\subsection{Hardware and Resource Limitations}
+\subsection{Hardware and Resource Limitations} % FIXME
 Hardware memory constraints restricted the training set to $500,000$ samples, falling short of the millions typically required for optimal Transformer generalization. This limitation likely constrained the model's ability to capture complex patterns. The primary bottleneck was identified within the data parsing implementation rather than the GPU memory capacity itself; future optimizations in data serialization could resolve this to allow for larger batch sizes and more extensive training sets.
 
-    Even though Transformer-based architectures generally demonstrate improved generalization with larger datasets, the training size in this study had to be restricted to $500,000$ due to hardware memory constraints. This could have greatly impaced the performance, and feasibility of the Transformer model in this thesis. Preliminary analysis suggests that this bottleneck may stem from the current data parsing implementation, which could be optimized in future work to allow for larger batch sizes and more extensive training sets.
+    Even though Transformer-based architectures generally demonstrate improved generalization with larger datasets, the training size in this study had to be restricted to $500,000$ due to hardware memory constraints. This could have greatly impacted the performance, and feasibility of the Transformer model in this thesis. Preliminary analysis suggests that this bottleneck may stem from the current data parsing implementation, which could be optimized in future work to allow for larger batch sizes and more extensive training sets.
 
 \section{Future Work}
 
@@ -1099,6 +1110,7 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann,
     \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
 \bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
+\bibitem{ref10} Author, Title, Journal, Year. (FIXME)
 \bibitem{ref11} T. Mitchell, \textit{Machine Learning}, 9780070428072, McGraw-Hill, 1997. 
 \bibitem{ref12} J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, 
     \textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, 
