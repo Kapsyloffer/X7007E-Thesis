@@ -286,7 +286,7 @@ The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formall
 
 In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
 
-For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by random task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
+For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Agorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
 However, reinfocement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Supervised Learning was chosen instead.
 
@@ -356,12 +356,14 @@ For data generation the following constants are used:
         \toprule
         \textbf{Constant} & \textbf{Default Value} & \textbf{Description} \\ 
         \midrule
-        Objects    & 100     & Total number of objects in the testing sequence \\
-        Stations   & 35      & Number of stations \\
-        Takt       & 700     & The cycle time ($Cmin$) \\
-        Drift      & 200     & The size of the drift area ($Cmin$) \\
-        Gap        & 10       & Time-buffer ($Cmin$) between genreated objects \\
-        Multiplier & 500     & Constant value to multiply \textit{Objects} with \\
+        Objects    & $100$     & Total number of objects in the testing sequence \\
+        Stations   & $39$      & Number of stations \\
+        Takt       & $700$     & The cycle time ($Cmin$) \\
+        Drift      & $200$     & The size of the drift area ($Cmin$) \\
+        Gap        & $10$      & Time-buffer ($Cmin$) between genreated objects \\
+        min\_size  & $100$     & Smallest possible Object ($Cmin$) \\
+        max\_size  & $Takt + 2 \times Drift$ & Largest possible Object ($Cmin$) \\
+        Multiplier & $5000$    & Constant value to multiply \textit{Objects} with, used for Training.\\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -455,7 +457,7 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
 \subsection{Constructive Data Generation as a Solved Puzzle} %FIXME
 \label{sub:datagen}
 
-To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than randomly placing tasks and checking for validity, the system employs a constructive generation algorithm. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training.
+To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than placing tasks stochastically and checking for validity, the system employs a constructive generation algorithm which builds one object at the time. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training. Due to how the entire sequence generates left to right the risk for overlaps is nonexistant.
 
 \subsubsection*{Dependency-Based Positioning}
 The placement of any given allocation $A_{i,j}$ (Object $i$ at Station $j$) is not independent. It is strictly constrained by two spatial-temporal boundaries derived from the existing grid state:
@@ -1038,6 +1040,7 @@ he testing data has an optimal solution before getting shuffled where $O_P = 0$.
 
 
 \section{Dataset}
+\label{sec:dataset}
 We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better. How the data was generated is further discussed im \ref{sub:datagen}
 
 
@@ -1052,9 +1055,12 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 \chapter{Discussion}
 \section{Interpretation of Results}
 
-TODO
+The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an improvement rate of 93\%; while this figure is exceptionally high, it has been verified against a stochastically generated test set that should thus distinct from the training data apart from the predefined limits \cite{tab:genconsts}. This suggests the model has successfully generalized the underlying logic rather than memorizing patterns. The remaining models exhibited performance metrics in the 70--80\% range, falling within a more expected distributions. Crucially, all architectures consistently maintained valid allocations within the defined operational constraints.
 
 \section{Limitations}
+\subsection{Testing and Training Data}
+Due to the limited size and inconsistency of available production data, this study relies on generated synthetic data (see \ref{sec:dataset}). Although this dataset was rigorously designed to adhere to operational constraints, the absence of real-world validation, and edge-cases not accounted for within sequencing, limits our ability to empirically confirm the models' performance in a live production environment.
+
 \subsection{Hardware and Resource Limitations}
 Hardware memory constraints restricted the training set to $500,000$ samples, falling short of the millions typically required for optimal Transformer generalization. This limitation likely constrained the model's ability to capture complex patterns. The primary bottleneck was identified within the data parsing implementation rather than the GPU memory capacity itself; future optimizations in data serialization could resolve this to allow for larger batch sizes and more extensive training sets.
 
@@ -1106,7 +1112,7 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref15} D. Kingma, J. L. Ba, \textit{ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION}, In ICLR, 2015.
 \bibitem{ref16} D. Bahdanau, K. Cho, Y. Bengio, \textit{Neural Machine Translation by Jointly Learning to Align and Translate}, arXiv preprint arXiv:1409.0473, 2016.
 \bibitem{ref17} R. Pascanu, T. Mikolov, Y. Bengio, \textit{On the difficulty of training Recurrent Neural Networks}, In ICML, 2013.
-\bibitem{refx} Author, Title, Journal, Year.
+% \bibitem{refx} Author, Title, Journal, Year.
 
 
 \end{thebibliography}
