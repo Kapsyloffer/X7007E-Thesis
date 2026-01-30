@@ -666,14 +666,14 @@ This implementation of the Transformer replaces the vocabulary projection layers
 The implemented model is a standard Sequence-To-Sequence model with modifications clarified in \ref{chap:workarounds}.
 
 \subsubsection{Continuous Input Encoder}
-The encoder component (\texttt{EncoderRNN}) processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly. 
+The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly. 
 
 \subsubsection{Attention Mechanism}
 To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
 
 Rather than relying on a static summary of the input, the mechanism calculates a dynamic "relevance score" for every item in the input sequence. These scores effectively function as a spotlight, determining how much focus the model should place on each specific input element when generating the next part of the output.
 
-These scores are then converted into probabilities that sum to 100\%. Finally, the model computes a "Context Vector," which is a weighted average of the inputs based on these probabilities. This ensures that the model "mixes" the most important information together to guide the next prediction, prioritizing high-relevance inputs while ignoring irrelevant ones. %FIXME
+These scores are then converted into probabilities that sum to 100\%. Finally, the model computes a "Context Vector," which is a weighted average of the inputs based on these probabilities. This ensures that the model "mixes" the most important information together to guide the next prediction, prioritizing the relevant inputs while ignoring irrelevant ones. %FIXME
 
 \subsubsection{Context-Aware Decoder}
 The decoder (\texttt{DecoderRNN}) generates the output sequence step-by-step. To maximize the utility of the attention mechanism, the context vector $c_t$ is injected at two distinct points in the decoding step:
@@ -819,11 +819,11 @@ he testing data has an optimal solution before getting shuffled where $O_P = 0$.
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $1/25$ & $96\%$ \\
-            Run \#2 & $0/34$ & $100\%$ \\
-            Run \#3 & $2/20$ & $90\%$ \\
+            Run \#1 & $14/72$ & $80.56\%$ \\
+            Run \#2 & $15/68$ & $77.94\%$ \\
+            Run \#3 & $21/67$ & $68.66\%$ \\
             \midrule
-            \textbf{Avg} & & $95.3\%$ \\
+            \textbf{Avg} & & $75.72\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -836,11 +836,11 @@ he testing data has an optimal solution before getting shuffled where $O_P = 0$.
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $83/367$ & $77.4\%$ \\
-            Run \#2 & $75/346$ & $78.3\%$ \\
-            Run \#3 & $64/340$ & $81.2\%$ \\
+            Run \#1 & $188/713$ & $73.63\%$ \\
+            Run \#2 & $183/741$ & $75.30\%$ \\
+            Run \#3 & $180/719$ & $74.97\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $74.63\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -855,11 +855,11 @@ he testing data has an optimal solution before getting shuffled where $O_P = 0$.
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $1121/5530$ & $79.73\%$ \\
-            Run \#2 & $1128/5392$ & $79.08\%$ \\
-            Run \#3 & $1233/5513$ & $77.63\%$ \\
+            Run \#1 & $2008/7208$ & $72.14\%$ \\
+            Run \#2 & $2013/7234$ & $72.17\%$ \\
+            Run \#3 & $2031/7266$ & $72.05\%$ \\
             \midrule
-            \textbf{Avg} & & $79.0\%$ \\
+            \textbf{Avg} & & $72.12\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
@@ -872,11 +872,11 @@ he testing data has an optimal solution before getting shuffled where $O_P = 0$.
             \toprule
             \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
             \midrule
-            Run \#1 & $11519/54162$ & $78.73\%$ \\
-            Run \#2 & $11544/54419$ & $78.79\%$ \\
-            Run \#3 & $11605/55066$ & $78.93\%$ \\
+            Run \#1 & $20329/72702$ & $72.04\%$ \\
+            Run \#2 & $20001/72463$ & $72.40\%$ \\
+            Run \#3 & $20151/72567$ & $72.23\%$ \\
             \midrule
-            \textbf{Avg} & & $78.82\%$ \\
+            \textbf{Avg} & & $72.22\%$ \\
             \bottomrule
         \end{tabular}
     \end{minipage}
