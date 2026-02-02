@@ -154,7 +154,7 @@ Each entry, whose size represents the time it needs to complete its cycle, may b
     \label{fig:assembly}
 \end{figure}
 
-    Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that if we compare the station $S_n$ and $S_m$, then we'll see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
+    Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that if we compare the station $S_n$ and $S_m$, then we will see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
 
 Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 200 seconds long in real life, while $S_3$ could be 300. \textit{As luck would have it, each station in this specific case are each roughly 7 minutes long, 700cmin}, thus we will not run into any major desync problems using clockcycles on these stations.
 
@@ -165,14 +165,14 @@ While this works well in a vacuum, the problems start to arise when $E$ also has
 
 The same problem can be seen at $T$ with $F$ and $G$ as both items need to borrow time from the stations before and after. Thus we run into an overlap, as the items \textit{cannot} fit.
 
-Do note that on $T$, $E$ does not utilize the drift area which results in it sitting flush with $F$ on the timeline, this may look good on paper but can result in overlap in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
+It is important to note that on $T$, $E$ does not utilize the drift area which results in it sitting flush with $F$ on the timeline, this may look good on paper but can result in overlap in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
 
 The same issue occurs at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
 \section{Jump-in and Jump-out}
-In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot fully proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}. \cite{ref6}
+In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot fully proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process refered to as \emph{jump-out}. \cite{ref6}
 
-A related challenge occurs when the missing components finally arrive. At this point, the product occupies space on the assembly station. Ideally, it should be reintegrated into the line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
+A related challenge occurs when the missing components finally arrive. At this point, the product components occupy space on the assembly station. Ideally, jumped out product should be reintegrated into the line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
 
 From an algorithmic perspective, a \emph{jump-in} can be treated as an $O(n)$ problem: one needs only to inspect the $n$ positions in a sequence of length $n$ to determine the best insertion point in the upcoming batch. Implemented correctly, a jump-in could occur as soon as the following batch. Nevertheless, depending on operational constraints, it may not be feasible in every batch.
 
@@ -491,7 +491,7 @@ The dimensions of the tasks are also generated dependently. While duration in ea
     \label{eq:}
 \end{equation}
 
-Wehen training the model is fed the sorted list, while testing is fed never seen before shuffled data. This process results in a synthetic dataset where every input sequence has a perfectly matching output sequence that is guaranteed to be solvable, providing a robust target for supervised learning.
+When training, the model is fed the sorted list, while testing is fed never seen before shuffled data. This process results in a synthetic dataset where every input sequence has a perfectly matching output sequence that is guaranteed to be solvable, providing a robust target for supervised learning.
 
 \begin{figure}[H] 
 \centering
@@ -688,7 +688,7 @@ The implemented model is a standard Sequence-To-Sequence model with modification
 The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly. 
 
 \subsubsection{Attention Mechanism}
-To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
+To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, refered to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
 
 Rather than relying on a static summary of the input, the mechanism calculates a dynamic "relevance score" for every item in the input sequence. These scores effectively function as a spotlight, determining how much focus the model should place on each specific input element when generating the next part of the output.
 
@@ -743,7 +743,7 @@ Once an input index $k$ is selected, it is masked out by setting its log-probabi
 
 \clearpage
 \section{The Dataset}
-To train the models, a custom PyTorch Dataset was implemented to handle combinatorial data. This pipeline is responsible for converting raw input jsons into tensors. The dataset looks more or less the same for all models.
+To train the models, a custom PyTorch Dataset was implemented to handle combinatorial data. This pipeline is responsible for converting raw input jsons into tensors. The dataset structure is identical for all models.
 
 \subsection{Data Processing}
 The dataset is initialized with raw JSON files containing sequences of station data. The pipeline flattens these structures into a stack of tensors, where each tensor represents a single task sequence with the shape:
@@ -835,10 +835,10 @@ Although the operational constraints of the target problem typically limit seque
 
 The values in the tables below is based on the ratio found at \ref{sec:eval} $\frac{O_P}{O_S}$, where $O_S$ is the number of overlaps found in a freshly generated shuffled dataset, and $O_P$ is the number of overlaps found after predicting and processing the items in said dataset. With the improvement rate being defined as 
 \begin{equation}
-    Improvement = ( 1 - \frac{O_P}{O_S} ) \cdot 100 \%
+    Improvement = ( 1 - \frac{O_P}{O_S} ) \times 100 \%
 \end{equation}
 
-he testing data has an optimal solution before getting shuffled where $O_P = 0$. The data is generated using a random number generator, using no seed, to ensure variability across test runs.
+The testing data has an optimal solution before getting shuffled where $O_P = 0$. The data is generated using a random number generator, using no seed, to ensure variability across test runs.
 
 \subsection{Pointer Network Performance}
 
