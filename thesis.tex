@@ -84,7 +84,7 @@ The primary objectives of this thesis are:
 
 The user interface (UI) will visualize the flow of the assembly line along two axes: one representing stations and one representing clockcycles. A clockcycle is defined as the time required for an item to move from one station to the next. In the visualization, items are displayed in a way that reflects the relative duration of processing at each station. In \autoref{fig:assembly}, this is illustrated by stretching items along the timeline to better represent the clockcycles. Note that a clockcycle is an arbitrary unit of time and does not correspond to real-world durations. For the purpose of this thesis, one clockcycle is defined as the time it takes for an arbitrary item $X$ to move from station $S_n$ to station $S_{n+1}$. 
 
-Each entry, whose size represents the time it needs to complete its cycle, may borrow time from a previous or upcoming station, this is refered to as the \textit{"drift area"} (see \ref{chap:drift}). Unfortunately, this is where the problems related to the Mixed-Model Assembly Lines start to arise. If time-intensive items are placed consecutively, we will experience an overlap, as the time-allocations will not fit given the constraints of the station and drift areas.
+Each entry, whose size represents the time it needs to complete its cycle, may borrow time from a previous or upcoming station, this is referred to as the \textit{"drift area"} (see \ref{chap:drift}). Unfortunately, this is where the problems related to the Mixed-Model Assembly Lines start to arise. If time-intensive items are placed consecutively, we will experience an overlap, as the time-allocations will not fit given the constraints of the station and drift areas.
 
 \begin{figure}[ht]
     \centering
@@ -156,9 +156,9 @@ Each entry, whose size represents the time it needs to complete its cycle, may b
 
     Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that if we compare the station $S_n$ and $S_m$, then we will see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
 
-Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 200 seconds long in real life, while $S_3$ could be 300. \textit{As luck would have it, each station in this specific case are each roughly 7 minutes long, 700cmin}, thus we will not run into any major desync problems using clockcycles on these stations.
+Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 200 seconds long in real life, while $S_3$ could be 300. \textit{In this specific case, each station in this specific case are each roughly 7 minutes long, 700 Cmin}, thus we will not run into any major desync problems using clockcycles on these stations.
 
-Between each station lies a buffer zone refered to a "drift area". A drift area in this case is a transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line, but these conveniences which at first glance makes this problem easier are also the source of problems that may ensue in production.
+Between each station lies a buffer zone referred to a "drift area". A drift area in this case is a transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line, but these conveniences which at first glance makes this problem easier are also the source of problems that may occur in production.
 
 As pictured in \autoref{fig:assembly}, $D$ will take a lot of time on $S_4$ and is forced to utilize time from $S_3$ and $S_5$. 
 While this works well in a vacuum, the problems start to arise when $E$ also has to utilize additional time from its neighbouring stations, causing an overlap between $D$ and $E$ at $T+2$ as they both require the use of the drift area. 
@@ -170,7 +170,7 @@ It is important to note that on $T$, $E$ does not utilize the drift area which r
 The same issue occurs at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
 \section{Jump-in and Jump-out}
-In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot fully proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process refered to as \emph{jump-out}. \cite{ref6}
+In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot fully proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}. \cite{ref6}
 
 A related challenge occurs when the missing components finally arrive. At this point, the product components occupy space on the assembly station. Ideally, jumped out product should be reintegrated into the line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
 
@@ -183,7 +183,7 @@ Jump-out, on the other hand, can be considered an $O(1)$ problem, though it pres
 \label{chap:drift}
 The Drift Area is visualized in this thesis as a gray zone intersecting two neighbouring stations, it is also the source of our scheduling conflicts. The Drift Area allows for a lot of flexibility due to the fact that \textit{instead} of slowing down the assembly line to $1100$ Cmin and decreasing the production output by roughly $40\%$, the assembly line instead moves at a pace of $700$ Cmin per station (Standard Takt), with $200 $Cmin available as \textit{drift} on both sides.
 
-For a station $S_n$ (where $Takt = 700$ Cmin), we can use up to $200$ Cmin from $S_{n-1}$ and up to $200$ Cmin from $S_{n+1}$. This is refered to in this thesis as \textbf{Borrowing}. Borrowing this way will give us up to a total time of $1100$ Cmin for any given task, with the caveat of $S_{n-1}$ and $S_{n+1}$ being reduced to a minimum of $500$ Cmin.
+For a station $S_n$ (where $Takt = 700$ Cmin), we can use up to $200$ Cmin from $S_{n-1}$ and up to $200$ Cmin from $S_{n+1}$. This is referred to in this thesis as \textbf{Borrowing}. Borrowing this way will give us up to a total time of $1100$ Cmin for any given task, with the caveat of $S_{n-1}$ and $S_{n+1}$ being reduced to a minimum of $500$ Cmin.
 
 It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, then work cannot begin on $n+1$ until it has finished. 
 
@@ -688,7 +688,7 @@ The implemented model is a standard Sequence-To-Sequence model with modification
 The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly. 
 
 \subsubsection{Attention Mechanism}
-To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, refered to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
+To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
 
 Rather than relying on a static summary of the input, the mechanism calculates a dynamic "relevance score" for every item in the input sequence. These scores effectively function as a spotlight, determining how much focus the model should place on each specific input element when generating the next part of the output.
 
@@ -798,7 +798,7 @@ Unlike the recurrent models, which process data sequentially by definition, the 
 \subsection{Teacher Forcing}
 \label{sec:teacher_forcing}
 
-The method of training used in this thesis is refered to as "Teacher Forcing". The model is trained by supplying the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than feeding back the model's own generated prediction. This stabilizes training and enables faster convergence, especially in RNN-based models. \cite{ref2, ref21}
+The method of training used in this thesis is referred to as "Teacher Forcing". The model is trained by supplying the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than feeding back the model's own generated prediction. This stabilizes training and enables faster convergence, especially in RNN-based models. \cite{ref2, ref21}
 
 We apply this strategy across all three architectures, though the implementation differs due to the nature of the models:
 
@@ -833,7 +833,7 @@ Performance is measured by how well the model can take an input with overlapping
 
 Although the operational constraints of the target problem typically limit sequences to batches of roughly 100 objects, the following results also evaluate the model's scalability beyond this range.
 
-The values in the tables below is based on the ratio found at \ref{sec:eval} $\frac{O_P}{O_S}$, where $O_S$ is the number of overlaps found in a freshly generated shuffled dataset, and $O_P$ is the number of overlaps found after predicting and processing the items in said dataset. With the improvement rate being defined as 
+The values in the tables below are based on the ratio found at \ref{sec:eval} $\frac{O_P}{O_S}$, where $O_S$ is the number of overlaps found in a freshly generated shuffled dataset, and $O_P$ is the number of overlaps found after predicting and processing the items in said dataset. With the improvement rate being defined as 
 \begin{equation}
     Improvement = ( 1 - \frac{O_P}{O_S} ) \times 100 \%
 \end{equation}
@@ -1085,7 +1085,7 @@ To objectively measure the performance of the model, we monitor performance of t
 \begin{equation}
     \text{ratio} = \frac{O_{predicted}}{O_{source}}
 \end{equation}
-where $O_{source}$ is the total number of overlaps of the shuffled input sequence, and $O_{predicted}$ is the total number of overlaps of the predicted sequence. The closer to $0$ it gets, the better it performs, and if it goes above $1$ we're yielding worse results than before.
+where $O_{source}$ is the total number of overlaps of the shuffled input sequence, and $O_{predicted}$ is the total number of overlaps of the predicted sequence. The closer to $0$ it gets, the better it performs, and if it goes above $1$ the model is yielding worse results than before.
 
 \chapter{Discussion}
 \section{Interpretation of Results}
@@ -1116,41 +1116,20 @@ Additionally, it would be valuable to investigate the feasibility of Online Lear
 
 \begin{thebibliography}{99}
 \bibitem{ref1} J. L. Ba, J. R. Kiros, and G. E. Hinton, \textit{Layer Normalization}, arXiv preprint arXiv:1607.06450, 2016.
-\bibitem{ref2}
-A. Dupuis, C. Dadouchi, and B. Agard, 
-        \textit{A decision support system for sequencing production in the manufacturing industry},
+\bibitem{ref2} A. Dupuis, C. Dadouchi, and B. Agard, \textit{A decision support system for sequencing production in the manufacturing industry},
 \textit{Computers \& Industrial Engineering}, vol.~185, p.~109686, 2023. 
-\bibitem{ref3} A. Bay, B. Sengupta,
-    \textit{Approximating meta-heuristics with homotopic recurrent neural networks},
-    arXiv preprint arXiv:1709.02194, 2017.
-\bibitem{ref4} I. Pointer,
-    \textit{Programming PyTorch for Deep Learning, ISBN: 9781492045359},
-O'Reilly Media, 2019.
-\bibitem{ref5} 
-A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, 
-A. N. Gomez, Ł. Kaiser, and I. Polosukhin, 
-\textit{Attention is All You Need}, Advances in Neural Information Processing Systems (NeurIPS), vol.~30, 2017.
-\bibitem{ref6} 
-C. Fink, O. Schelén, and U. Bodin, 
-\textit{Work in progress: Decision support system for rescheduling blocked orders}, 
-Department of Computer Science, Electrical and Space Engineering, Luleå University of Technology, 2023.
-\bibitem{ref7} O. Vinyals, M. Fortunato, and N. Jaitly, 
-    \textit{Pointer Networks}, 
-    Department of Mathematics, University of California Berkeley, 2015.
-\bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann,
-    \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
+\bibitem{ref3} A. Bay, B. Sengupta, \textit{Approximating meta-heuristics with homotopic recurrent neural networks}, arXiv preprint arXiv:1709.02194, 2017.
+\bibitem{ref4} I. Pointer, \textit{Programming PyTorch for Deep Learning, ISBN: 9781492045359}, O'Reilly Media, 2019.
+\bibitem{ref5} A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin, \textit{Attention is All You Need}, Advances in Neural Information Processing Systems (NeurIPS), vol.~30, 2017.
+\bibitem{ref6} C. Fink, O. Schelén, and U. Bodin, \textit{Work in progress: Decision support system for rescheduling blocked orders}, Department of Computer Science, Electrical and Space Engineering, Luleå University of Technology, 2023.
+\bibitem{ref7} O. Vinyals, M. Fortunato, and N. Jaitly, \textit{Pointer Networks}, Department of Mathematics, University of California Berkeley, 2015.
+\bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann, \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
 \bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
 \bibitem{ref10} L. Chen, L. Zhou, M. Zhou, X. Lu, Y. Zhu, W. Song, Z. Lu, J. Li, \textit{Deep Reinforcement Learning Based Dynamic Scheduling of Random Arrival Tasks in Cloud Manufacturing}, Proceedings of the 6th International Conference on Universal Village (UV), 2022.
 \bibitem{ref11} T. Mitchell, \textit{Machine Learning}, 9780070428072, McGraw-Hill, 1997. 
-\bibitem{ref12} J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, 
-    \textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, 
-    Proceedings of NAACL-HLT, 2019.
-\bibitem{ref13} P. Giannoulis, Y. Pantis, C. Tzamos, 
-    \textit{Teaching Transformers to Solve Combinatorial Problems through Efficient Trial \& Error}, 
-    Advances in Neural Information Processing Systems (NeurIPS), 2025.
-\bibitem{ref14} Y. Youssef, P. R. M. de Araujo, A. Noureldin, S. Givigi,
-    \textit{TRATSS: Transformer-Based Task Scheduling System for Autonomous Vehicles},
-    arXiv preprint arXiv:2504.05407, 2025.
+\bibitem{ref12} J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, \textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, Proceedings of NAACL-HLT, 2019.
+\bibitem{ref13} P. Giannoulis, Y. Pantis, C. Tzamos, \textit{Teaching Transformers to Solve Combinatorial Problems through Efficient Trial \& Error}, Advances in Neural Information Processing Systems (NeurIPS), 2025.
+\bibitem{ref14} Y. Youssef, P. R. M. de Araujo, A. Noureldin, S. Givigi, \textit{TRATSS: Transformer-Based Task Scheduling System for Autonomous Vehicles}, arXiv preprint arXiv:2504.05407, 2025.
 \bibitem{ref15} D. Kingma, J. L. Ba, \textit{Adam: A Method for Stochastic Optimization}, In ICLR, 2015.
 \bibitem{ref16} D. Bahdanau, K. Cho, Y. Bengio, \textit{Neural Machine Translation by Jointly Learning to Align and Translate}, In ICLR, 2015.
 \bibitem{ref17} R. Pascanu, T. Mikolov, Y. Bengio, \textit{On the difficulty of training Recurrent Neural Networks}, In ICML, 2013.
