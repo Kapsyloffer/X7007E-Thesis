@@ -38,10 +38,12 @@
 \date{\today}
 \maketitle
 
-\begin{abstract} 
-    A mixed-model assembly line manufactures different product variants on a single line, where variations in tasks can create imbalances across the workstations. When several labour-intensive models appear consecutively, some stations may exceed their capacity, leading to overloads that require halting the entire assembly line to resolve the issues. 
+\begin{abstract}
+A Mixed-Model Assembly Line (MMAL) manufactures different product variants on a single line, where variations in tasks can create imbalances across workstations. When several labour-intensive models appear consecutively, stations may exceed their capacity, leading to overloads that require halting the entire line. This challenge is formalized as the Product Sequencing Problem, an NP-hard optimization task traditionally managed by rule-based heuristics or human intuition.
 
-    This challenge is formalized as \textit{the Product Sequencing Problem}, an NP-hard optimization task concerned with arranging production orders into efficient sequences. This thesis investigates whether deep learning can be used for solving this problem. Using a Transformer-, Pointer Network-, and Sequence to Sequence model trained to emulate tacit scheduling knowledge captured in historical data, and using its predictions to mimic rule-based approaches whilst still providing time-based improvements. 
+This thesis investigates the viability of Deep Learning for solving this problem by emulating valid scheduling logic. We adapt and compare three Neural Network architectures: the \textbf{Sequence-to-Sequence (Seq2Seq)} model and the \textbf{Transformer} (originally derived from Natural Language Processing), alongside the \textbf{Pointer Network} (designed for combinatorial optimization). To overcome the limitations of inconsistent historical records, the models are trained on high-fidelity synthetic data generated via a constructive "solved puzzle" algorithm, which serves as a collision-free ground truth.
+
+The models are evaluated on their ability to minimize station overlaps in permuted sequences. Results demonstrate that the \textbf{Transformer} architecture significantly outperforms the recurrent models, achieving a \textbf{93\% reduction in overlaps} on unseen test data, compared to approximately 72--75\% for the RNN-based approaches. These findings suggest that attention-based mechanisms are superior in capturing the global context required for complex constraint satisfaction in manufacturing.
 \end{abstract}
 
 \chapter*{Acknowledgements} 
@@ -56,7 +58,7 @@ EU funding).
 \section{Background}
 This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. 
 
-The main constraint for this problem is that the assembly line moves synchronously; if a single station exceeds its cycle time, often depicted as an overlap (see \ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts.
+The main constraint for this problem is that the assembly line moves synchronously, if a single station exceeds its cycle time, often depicted as an overlap (see \ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts.
 
 The methods used in assembly today are strictly rules-based, and due to a large number of rules that have accumulated over the years a lot of these subtleties can prove highly restrictive in search of better solutions. 
 
@@ -64,12 +66,18 @@ The methods used in assembly today are strictly rules-based, and due to a large 
 Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a time-based approach can help reduce the number of station overloads (\ref{chap:overlap}), and conflicts.
 
 \clearpage 
-\section{Objectives} %FIXME
-The objectives of this thesis are:
+\section{Objectives}
+\label{sec:objectives}
+
+The primary objectives of this thesis are:
+
 \begin{enumerate}
-    \item To design a deep learning model capable of emulating the tacit knowledge of management workers using historical data.
-    \item To investigate which model performs the best in the given task of permuting input data to an acceptable solution.
-    \item To provide a visualization tool that intuitively illustrates the scheduling flow, highlighting overlaps, borrowed time, and bottlenecks across stations and time.
+    \item \textbf{Deep Learning Framework Design:} To design a supervised learning framework capable of emulating expert scheduling logic. Due to the scarcity of consistent historical records, this involves training on high-fidelity synthetic data generated via a constructive "solved puzzle" heuristic to represent valid, collision-free ground truths, see \ref{sub:datagen}.
+
+    \item \textbf{Architectural Adaptation:} To adapt architectures originally designed for Natural Language Processing (Sequence-to-Sequence, Transformer) to the domain of combinatorial optimization. This includes modifying them to handle continuous feature vectors and enforcing permutation constraints via pointer mechanisms.
+
+    \item \textbf{Comparative Evaluation:} To investigate and compare the performance of Recurrent versus Attention-based architectures in resolving the Product Sequencing Problem, specifically measuring their ability to minimize station overlaps, see \ref{chap:overlap}.
+
 \end{enumerate}
 
 \section{Visualization of the Problem}
@@ -146,7 +154,7 @@ Each entry, whose size represents the time it needs to complete its cycle, may b
     \label{fig:assembly}
 \end{figure}
 
-    Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that; if we compare the station $S_n$ and $S_m$, then we'll see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
+    Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clockcycle for each possible item, then we can never keep our items in sync. The main issue is that if we compare the station $S_n$ and $S_m$, then we'll see that each station have a different time to finish, then the clockcycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
 
 Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 200 seconds long in real life, while $S_3$ could be 300. \textit{As luck would have it, each station in this specific case are each roughly 7 minutes long, 700cmin}, thus we will not run into any major desync problems using clockcycles on these stations.
 
@@ -161,14 +169,14 @@ Do note that on $T$, $E$ does not utilize the drift area which results in it sit
 
 The same issue occurs at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
-\section{Jump-in and Jump-out} % FIXME
-In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order remains unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}.
+\section{Jump-in and Jump-out}
+In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot fully proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}. \cite{ref6}
 
 A related challenge occurs when the missing components finally arrive. At this point, the product occupies space on the assembly station. Ideally, it should be reintegrated into the line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
 
 From an algorithmic perspective, a \emph{jump-in} can be treated as an $O(n)$ problem: one needs only to inspect the $n$ positions in a sequence of length $n$ to determine the best insertion point in the upcoming batch. Implemented correctly, a jump-in could occur as soon as the following batch. Nevertheless, depending on operational constraints, it may not be feasible in every batch.
 
-Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the line by a clock cycle, potentially causing overloads. Alternatively, the gap could be left in place, which avoids overloading but may result in lost revenue.
+Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the line by one clock cycle ($T$), potentially cause overloads (see \ref{chap:overlap}). Alternatively, the gap could be left in place, which avoids overloading but will result in lower throughput. \cite{ref6}
 
 \clearpage %blir fult annars
 \section{Defining Drift Area}
@@ -284,7 +292,7 @@ Overlaps are how station overloads are visualized in this thesis, as we follow t
 
 The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms, rather than using machine learning.
 
-In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal.
+In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal. \cite{ref19} \cite{ref20}
 
 For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Algorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
@@ -292,7 +300,7 @@ However, reinforcement learning requires trying and failing repeatedly in order 
 
 While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
 
-Current manual approaches rely heavily on the "tacit knowledge" of management staff, knowledge accumulated through experience that is difficult to articulate as explicit rules, especially if rules have accumulated over time. This thesis proposes capturing this knowledge using Supervised Learning, formally known in this context as Imitation Learning. 
+Current manual approaches rely heavily on the "tacit knowledge" of management staff, knowledge accumulated through experience that is difficult to articulate as explicit rules, especially if rules have accumulated over time. This thesis proposes capturing this knowledge using Supervised Learning,a paradigm formally known in this context as Imitation Learning. A precedent for this methodology is established by Dupuis et al. \cite{ref2}, who successfully trained a Sequence-to-Sequence (Seq2Seq) model using teacher-forcing to generate production schedules.
 
 
 \section{Recurrent Architectures}
@@ -428,7 +436,7 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
   \draw[|-|] (4.5, -0.7) -- (6.2, -0.7) node[midway, below] {$O + T - S$};
 
 \end{tikzpicture}
-    \caption{Allocation positioning before the centering process} %FIXME
+    \caption{Allocation positioning before the centering process}
 \end{minipage}\hfill
 \begin{minipage}{0.48\textwidth}
 \centering
@@ -454,33 +462,36 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
 
 \end{figure}
 
-\subsection{Constructive Data Generation as a Solved Puzzle} %FIXME
+\subsection{Constructive Data Generation as a Solved Puzzle} 
 \label{sub:datagen}
 
 To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than placing tasks stochastically and checking for validity, the system employs a constructive generation algorithm which builds one object at the time. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training. Due to how the entire sequence generates left to right the risk for overlaps is nonexistent.
 
 \subsubsection*{Dependency-Based Positioning}
-The placement of any given allocation $A_{i,j}$ (Object $i$ at Station $j$) is not independent. It is strictly constrained by two spatial-temporal boundaries derived from the existing grid state:
+The placement of any given allocation $A_{[T_n , S_n]}$ (Timeslot $T_n$ at Station $S_n$) is not independent. It is strictly constrained by two spatial-temporal boundaries derived from the existing grid state:
 \begin{enumerate}
-    \item \textbf{Station Availability:} The station $j$ must be free. Therefore, $A_{i,j}$ cannot start until the previous object $i-1$ has departed station $j$.
-    \item \textbf{Object Availability:} The object $i$ must be ready. Therefore, $A_{i,j}$ cannot start until object $i$ has finished processing at the previous station $j-1$.
-    \item \textbf{The Gap} To control the density of the generated data a gap is added (dependent on the values found in \ref{tab:genconsts}).
+    \item \textbf{Station Availability:} The station $S_n$ must be free. Therefore, $A_{[T_n , S_n]}$ cannot start until the previous object at $T_{n-1}$ has departed station $S_n$.
+    \item \textbf{Object Availability:} The object at $T_n$ must be ready. Therefore, $A_{[T_n , S_n]}$ cannot start until the object at $T_n$ has finished processing at the previous station $S_{n-1}$.
+    \item \textbf{Gap (Density control):} To vary the complexity of the generated data, a gap is introduced (see \ref{tab:genconsts}). A larger gap will result in sparser schedules with multiple valid solutions, whereas a minimal gap will result in densely packed schedules. In a real-world manufacturing context, tighter schedules would maximize throughput but place higher strain on human operators.
 \end{enumerate}
 
 Mathematically, the earliest valid start time ($t_{start}$) for the new allocation is defined as the maximum of these two completion timestamps, plus a configured safety gap:
 
 \begin{equation}
-    t_{start} = \max(End_{i-1, j}, \quad End_{i, j-1}) + Gap
+    t_{start} = \max(End_{T_{n-1}, S_n}, \quad End_{T, S_{n-1}}) + Gap
 \end{equation}
 
-This logic ensures that the generated schedule is causally valid—no object effectively "teleports" between stations, and no two objects overlap on a single station.
+This logic ensures that the generated schedule is causally valid, no object effectively "teleports" between stations, and no two objects overlap on a single station.
 
 \subsubsection*{Context-Aware Scaling}
-The dimensions of the tasks are also generated dependently. While a desired duration is chosen stochastically, the actual assigned size ($S$) is clamped by the remaining available time in the Takt window. The generator calculates the available space between the calculated $t_{start}$ and the maximum drift boundary. If the random size exceeds this space, it is truncated to fit.
+The dimensions of the tasks are also generated dependently. While duration in each station for each object is chosen stochastically, the actual assigned size ($S$) of the duration is clamped by the remaining available time in the Takt + Drift window. The generator calculates the available space between the calculated $t_{start}$ and the maximum drift boundary. If the random size exceeds this space, it is truncated to fit (within the constraints of $min\_size$, see \ref{tab:genconsts})
 
-This process results in a dataset where every input (the sequence of objects) has a perfectly matching output (the offsets and sizes) that is guaranteed to be solvable, providing a robust target for supervised learning.
+\begin{equation}
+    min\_size \leq S \leq max\_size 
+    \label{eq:}
+\end{equation}
 
-%FIXME 
+Wehen training the model is fed the sorted list, while testing is fed never seen before shuffled data. This process results in a synthetic dataset where every input sequence has a perfectly matching output sequence that is guaranteed to be solvable, providing a robust target for supervised learning.
 
 \begin{figure}[H] 
 \centering
@@ -566,16 +577,16 @@ This process results in a dataset where every input (the sequence of objects) ha
     \caption{Case 2: The gray object is borrowing time from the white object in $S_n$. Even though it finished in $S_{n-1}$, the white object cannot begin assembly right away in $S_n$ as it's dependent on the gray object finishing at $S_n$.}
 \end{minipage}
 \end{figure}
-% \section{JSON to Vector Methodology}
-% Machine learning models operate on numerical vector data, often represented as \textit{tensors}, rather than on raw JSON structures. Considering a sequence of JSON objects on an assembly line, each object can be encoded into a fixed-length vector $x_t$ by extracting and normalizing its features. This process transforms the list into a sequence of vectors ${[x_1, x_2, \dots, x_N]}$. Using sequences derived from historical data, a model can be trained to learn a mapping from an input configuration of JSONs to a desired output order.
 
-\section{Adapting Language-Based Models for Sequencing} %FIXME
+\section{Adapting Language-Based Models for Sequencing}
 
-Two of the models examined in this thesis, the Sequence-To-Sequence model, and Transformer model, were originally designed for natural language processing (NLP) tasks, such as machine translation. These models typically rely on a predefined vocabulary. 
+Two of the models examined in this thesis, the Sequence-To-Sequence model and the Transformer model, were originally designed for natural language processing (NLP) tasks. These models typically rely on a fixed, predefined vocabulary.
 
-This reliance proves problematic when the data does not consist of frequently occurring words, but rather \textit{unique} objects with distinct properties. This raises the question of whether a list of products can be treated analogously to a collection of words, where each product variation constitutes a distinct element within the vocabulary. While this approach allows the model to replicate historical patterns, it risks learning inherent data biases or flaws.
+This reliance proves problematic because the processed data in this thesis does not consist of static words from a dictionary, rather a dynamic set of \textit{unique} objects that changes with every production batch. Consequently, the model cannot predict a token from a learned list, rather it must instead select from the variable input provided on that sequence.
 
-Furthermore, specific constraints must be imposed. Language models tend to overproduce common tokens (e.g., “the”) because they are statistically probable in general English text. To avoid this bias in a combinatorial context, the model must be adapted to generate valid permutations relevant to the specific application (see \ref{chap:workarounds}).
+Furthermore, specific combinatorial constraints must be imposed. Natural language generation is probabilistic and inherently allows for repetition, and if poorly trained might default to the "easiest" alternative. (e.g., the word "the" repeating multiple times, due to it being the most common word in the english language). 
+
+In our use-case, each object within the input \textit{must} appear in the output sequence \textit{exactly once}, and the length of the output sequence \textit{must} match the length of the input sequence. Therefore, the architecture must be adapted to enforce this combinatorial constraint, ensuring valid permutations rather than simply generating the most statistically probable tokens (see \ref{chap:workarounds}).
 
 \section{Workarounds}
 \label{chap:workarounds}
@@ -593,13 +604,13 @@ The Sequence-To-Sequence model employs a "soft" feedback loop during sequence ge
 \subsection{The Pointer Head}
 \label{sub:phead}
 
-The greatest deviation from the canonical Transformers is the removal of the vocabulary projection layer. It is replaced by a \texttt{PointerHead} module designed to select elements from the input sequence, inspired by the Pointer Network. \ref{sec:pointer}
+The greatest deviation from the canonical Transformer is the removal of the vocabulary projection layer. It is replaced by a \texttt{PointerHead} module designed to select elements from the input sequence, a mechanism inspired by the Pointer Network \ref{sec:pointer}.
 
-Instead of predicting a token, the Pointer Head computes a similarity score between the current decoder state, and the encoder outputs.
-\begin{equation}
+Instead of predicting a token from a fixed vocabulary, the Pointer Head computes a similarity score between the current decoder state and the encoder outputs using the Transformer's attention mechanism, rather than additive attention \cite{ref5} \cite{ref7}:
+ \begin{equation}
     \text{Scores} = \frac{(Dec_{out} W_q) \cdot (Enc_{out} W_k)^T}{\sqrt{d_{model}}}
-\end{equation}
-These raw logits scores represent the compatibility between the current decoding step and every element in the input sequence. When passed through a Cross-Entropy loss function during training, they effectively train the model to "point" to the correct input index for the next position in the sequence.
+\end{equation} 
+These raw logit scores represent the compatibility between the current decoding step and every element in the input sequence. When passed through a Cross-Entropy loss function during training, they effectively train the model to "point" to the correct input index for the next position in the sequence.
 
 \chapter{System Architecture}
 
@@ -652,13 +663,13 @@ This mechanism allows the model to distinguish between identical tasks placed at
 The system employs Layer Normalization to stabilize training \cite{ref1}, specifically adopting "Pre-Normalization" where the input is normalized \textit{before} passing it to the sub-layer, rather than after. This configuration, implemented in the \texttt{ResidualConnection} module, allows gradients to flow more directly through the network, generally improving convergence in deeper models.
 
 \subsubsection{Multi-Head Attention}
-The core mechanism of the model is Multi-Head Attention (MHA), which allows the model to jointly attend to information from different representation subspaces. The implementation utilizes $h$ parallel heads. For each head, the input is projected into Query ($Q$), Key ($K$), and Value ($V$) matrices. The attention scores are computed using Scaled Dot-Product Attention:
+The core mechanism of the model is Multi-Head Attention (MHA), which allows the model to jointly attend to information from different representation subspaces. The implementation utilizes $h$ parallel heads. For each head, the input is projected into Query, Key, and Value ($Q$, $K$, $V$) matrices. The attention scores are computed using Scaled Dot-Product Attention: \cite{ref5}
 \begin{equation}
     \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
 \end{equation}
 
 \subsubsection{Feed-Forward Block}
-Each encoder and decoder layer contains a position-wise Feed-Forward Network (FFN). This consists of two linear transformations with a ReLU activation function in between:
+Each encoder and decoder layer contains a position-wise Feed-Forward Network (FFN). This consists of two linear transformations with a ReLU activation function in between: \cite{ref5}
 \begin{equation}
     FFN(x) = \text{ReLU}(xW_1 + b_1)W_2 + b_2
 \end{equation}
@@ -667,9 +678,6 @@ The inner layer projects the input to a higher dimension ($d_{ff}$, typically $4
 \subsubsection{The Pointer Head}
 
 This implementation of the Transformer replaces the vocabulary projection layers in favour of a Pointer Head in order to handle combinatorial tasks rather than NLP-based tasks. See \ref{sub:phead}
-
-
-
 
 \subsection{Sequence-to-Sequence}
 \label{sec:seq2seq}
@@ -684,7 +692,11 @@ To overcome the bottleneck of compressing the entire sequence into a single fixe
 
 Rather than relying on a static summary of the input, the mechanism calculates a dynamic "relevance score" for every item in the input sequence. These scores effectively function as a spotlight, determining how much focus the model should place on each specific input element when generating the next part of the output.
 
-These scores are then converted into probabilities that sum to 100\%. Finally, the model computes a "Context Vector," which is a weighted average of the inputs based on these probabilities. This ensures that the model "mixes" the most important information together to guide the next prediction, prioritizing the relevant inputs while ignoring irrelevant ones. %FIXME
+These scores are normalized into probabilities that sum to 100\%. Finally, the model computes a time dependent Context Vector ($c_t$), which is a weighted average of the inputs \cite{ref16}:
+\begin{equation}
+    c_t = \sum_{j=1}^{T_x} \alpha_{tj} h_j
+\end{equation}
+This weighted sum ensures that the model prioritizes the most relevant information for the immediate prediction while ignoring irrelevant noise, effectively bypassing the long-term memory limitations of standard Recurrent Neural Networks.
 
 \subsubsection{Context-Aware Decoder}
 The decoder (\texttt{DecoderRNN}) generates the output sequence step-by-step. To maximize the utility of the attention mechanism, the context vector $c_t$ is injected at two distinct points in the decoding step:
@@ -711,17 +723,17 @@ The encoder processes the input sequence to generate a latent representation of 
 The decoder generates the output permutation one index at a time. Unlike standard NLP models that generate new tokens from a fixed vocabulary, this decoder selects indices directly from the input sequence.
 
 \begin{itemize}
-    \item \textbf{Glimpse Mechanism:} To enhance the pointing accuracy, the model employs a "glimpse" or "multi-hop" attention step. At every time step $t$, the decoder's current state $s_t$ queries the encoder outputs to calculate a context vector $c_t$:
+    \item \textbf{Glimpse Mechanism:} To enhance the pointing accuracy, the model employs a "glimpse" mechanism as proposed by Vinyals et al. (2016) \cite{ref18}. Unlike the standard Pointer Network which points immediately, this mechanism allows the decoder to "reason" about the global context before making a selection. At time step $t$, the decoder state $s_t$ queries the encoder outputs to calculate a context vector $c_t$ \cite{ref18}:
     \begin{equation}
         c_t = \sum_{i=1}^{T} \text{Attention}(s_t, h_i) \cdot h_i
     \end{equation}
     This vector summarizes the most relevant parts of the input sequence for the current decision.
-    
-    \item \textbf{Pointer Selection:} The final selection is performed by a second attention layer. To fuse the information, the context vector $c_t$ is projected and added to the current decoder state to form a \textit{combined query}:
+
+    \item \textbf{Pointer Selection:} The final selection is performed by fusing the glimpse context with the original state. The context vector $c_t$ is projected and added to the current decoder state (a residual connection) to form a \textit{refined query} $u_t$:
     \begin{equation}
         u_t = s_t + \tanh(W_{proj} \cdot c_t)
     \end{equation}
-    This combined query $u_t$ is then used to compute the final attention scores (logits) over the input elements. The index with the highest probability is selected as the next element in the permutation.
+    This refined query $u_t$ is then used to compute the final attention scores (logits) over the input elements. The index with the highest probability is selected as the next element in the permutation.
 \end{itemize}
 
 \subsubsection{Masking and Inference}
@@ -783,6 +795,18 @@ Unlike the recurrent models, which process data sequentially by definition, the 
     \item \textbf{Look-Ahead Mask (Target):} To preserve the auto-regressive property, a triangular "no-peak" mask is applied to the decoder. This ensures that when generating the prediction for position $t$, the model can only attend to positions $0$ through $t-1$, effectively hiding future ground-truth tokens.
 \end{enumerate}
 
+\subsection{Teacher Forcing}
+\label{sec:teacher_forcing}
+
+The method of training used in this thesis is refered to as "Teacher Forcing". The model is trained by supplying the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than feeding back the model's own generated prediction. This stabilizes training and enables faster convergence, especially in RNN-based models. \cite{ref2, ref21}
+
+We apply this strategy across all three architectures, though the implementation differs due to the nature of the models:
+
+\begin{enumerate}
+    \item \textbf{Recurrent Models (Seq2Seq \& Pointer Network):} For the RNN-based architectures, Teacher Forcing is applied sequentially. During the forward pass, the decoder receives the ground-truth token $y_{t-1}$ explicitly at each time step to compute the hidden state and output for time $t$. \cite{ref2}
+    \item \textbf{Transformer:} As the Transformer processes sequences in parallel, Teacher Forcing is implemented implicitly via the \textbf{Look-Ahead Mask} described previously. By masking future positions, the self-attention mechanism at position $t$ is restricted to attending only to the ground-truth sequence indices $[0, t-1]$, effectively replicating the Teacher Forcing behavior without a recurrent loop. \cite{ref22} \cite{ref5}
+\end{enumerate}
+
 
 \section{The Application Programming Interface (API)}
 The system exposes its core functionalities through a RESTful API, facilitating programmatic interaction with the implemented neural architectures. This interface serves as the primary gateway for data ingestion and inference execution.
@@ -797,11 +821,11 @@ This POST endpoint provides a unified interface for sequence processing across d
 
 This POST endpoint extends the interface to support multiple sequence generation. It accepts an integer parameter $n$, executing the selected model architecture $n$ times to return a list of $n$ alternative processed sequences.
 
-
 \subsubsection{/check/}
 
 This POST endpoint will count the number of \textbf{overlaps} on a given sequence, based on configuration data.
 
+% INSERT?
 
 \chapter{Experiments and results}
 \section{Task Performance}
@@ -1066,22 +1090,28 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 \chapter{Discussion}
 \section{Interpretation of Results}
 
-The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an improvement rate of 93\%; while this figure is exceptionally high, it has been verified against a stochastically generated test set that should thus distinct from the training data apart from the predefined limits \ref{tab:genconsts}. This suggests the model has successfully generalized the underlying logic rather than memorizing patterns. The remaining models exhibited performance metrics in the 70--80\% range, falling within a more expected distributions. Crucially, all architectures consistently maintained valid allocations within the defined operational constraints.
+The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an overlap reduction of 93\% on unseen test data.
+
+While this result indicates strong generalization to new sequences, the exceptionally high performance warrants critical scrutiny regarding the nature of the synthetic dataset. Since the data is generated via a constructive "solved puzzle" heuristic (Section \ref{sub:datagen}), the resulting tasks contain inherent "fingerprints" of the generation logic, specifically the deterministic \textit{Gap} and \textit{Centering} calculations.
+
+Even though the input sequences are freshly generated and then shuffled during testing, the relationships between compatible tasks remain encoded in their feature vectors. It is highly probable that the Transformer, utilizing its global self-attention mechanism, has successfully "reverse-engineered" these generative artifacts. Rather than learning abstract scheduling principles (e.g., "how to manage generic load"), the model has likely learned to identify the specific "jigsaw" edges created by the constructive algorithm, allowing it to reconstruct the original ground truth with high fidelity.
+
+This hypothesis is supported by the performance gap between the Transformer (93\%) and the Recurrent models (~75\%). The Transformer can inspect the entire shuffled "pool" of tasks simultaneously to find optimal pairings, whereas the RNNs must attempt to reconstruct the puzzle linearly, making it harder to spot these global, puzzle-piece connections. %fishy
 
 \section{Limitations}
 \subsection{Testing and Training Data}
 Due to the limited size and inconsistency of available production data, this study relies on generated synthetic data (see \ref{sec:dataset}). Although this dataset was rigorously designed to adhere to operational constraints, the absence of real-world validation, and edge-cases not accounted for within sequencing, limits our ability to empirically confirm the models' performance in a live production environment.
 
-\subsection{Hardware and Resource Limitations} % FIXME
-Hardware memory constraints restricted the training set to $500,000$ samples, falling short of the millions typically required for optimal Transformer generalization. This limitation likely constrained the model's ability to capture complex patterns. The primary bottleneck was identified within the data parsing implementation rather than the GPU memory capacity itself; future optimizations in data serialization could resolve this to allow for larger batch sizes and more extensive training sets.
+\subsection{Hardware and Resource Limitations}
+The training process was strictly bound by the available GPU Video RAM (VRAM). The Transformer architecture, which has a quadratic memory complexity relative to sequence length, frequently triggered \textit{CUDA out of memory} errors during experimentation. 
 
-    Even though Transformer-based architectures generally demonstrate improved generalization with larger datasets, the training size in this study had to be restricted to $500,000$ due to hardware memory constraints. This could have greatly impacted the performance, and feasibility of the Transformer model in this thesis. Preliminary analysis suggests that this bottleneck may stem from the current data parsing implementation, which could be optimized in future work to allow for larger batch sizes and more extensive training sets.
+To maintain training stability, it was necessary to reduce the batch size. However, small batch sizes introduce gradient noise, making it computationally infeasible to converge effectively on a massive dataset (millions of samples). Consequently, the training dataset was capped at $500,000$ samples to balance memory constraints with training duration. Future work utilizing hardware with higher VRAM capacities would allow for larger batch sizes, enabling the model to learn from the millions of examples required for optimal generalization.
 
 \section{Future Work}
 
-Future iterations of this research should prioritize larger datasets and utilize high performance computing clusters to overcome the memory bottlenecks encountered in this study. This would enable the training of models on datasets significantly larger than the current limit of $500,000$ objects. Furthermore, the current transformer model exhibits signs of underfitting, suggesting that the training loop configuration requires further refinement. While an exhaustive optimization of the training regimen was outside the temporal scope of this work, future efforts should focus on tuning these dynamics to fully exploit the model's capacity.
+Future iterations of this research should prioritize bridging the gap between synthetic success and real-world application. While the current model demonstrates strong heuristic learning, scaling the training data via better computing hardware could help resolve the remaining overlaps. Specifically, optimizing the data serialization pipeline would enable the processing of millions of sequences, potentially allowing the Transformer to generalize from "strong approximation" to "perfect solution."
 
-    Additionally, it would be valuable to investigate the feasibility of Online Learning paradigms to see if the model could adapt in real-time using Human-in-the-Loop (HITL) strategies to expand the training scope to include operator overrides. Doing so would incorporate further tacit knowledge, complex reasoning, and constraints that are not captured in the standard training data.
+Additionally, it would be valuable to investigate the feasibility of Online Learning paradigms. Implementing a Human-in-the-Loop (HITL) strategy would allow the model to adapt in real-time to operator overrides. This would effectively capture the true "knowledge" of the assembly line reasoning that cannot be fully encapsulated in a synthetic training set.
 
 
 \begin{thebibliography}{99}
@@ -1110,7 +1140,7 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann,
     \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
 \bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
-\bibitem{ref10} Author, Title, Journal, Year. (FIXME)
+\bibitem{ref10} L. Chen, L. Zhou, M. Zhou, X. Lu, Y. Zhu, W. Song, Z. Lu, J. Li, \textit{Deep Reinforcement Learning Based Dynamic Scheduling of Random Arrival Tasks in Cloud Manufacturing}, Proceedings of the 6th International Conference on Universal Village (UV), 2022.
 \bibitem{ref11} T. Mitchell, \textit{Machine Learning}, 9780070428072, McGraw-Hill, 1997. 
 \bibitem{ref12} J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, 
     \textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, 
@@ -1121,9 +1151,14 @@ Department of Computer Science, Electrical and Space Engineering, Luleå Univers
 \bibitem{ref14} Y. Youssef, P. R. M. de Araujo, A. Noureldin, S. Givigi,
     \textit{TRATSS: Transformer-Based Task Scheduling System for Autonomous Vehicles},
     arXiv preprint arXiv:2504.05407, 2025.
-\bibitem{ref15} D. Kingma, J. L. Ba, \textit{ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION}, In ICLR, 2015.
-\bibitem{ref16} D. Bahdanau, K. Cho, Y. Bengio, \textit{Neural Machine Translation by Jointly Learning to Align and Translate}, arXiv preprint arXiv:1409.0473, 2016.
+\bibitem{ref15} D. Kingma, J. L. Ba, \textit{Adam: A Method for Stochastic Optimization}, In ICLR, 2015.
+\bibitem{ref16} D. Bahdanau, K. Cho, Y. Bengio, \textit{Neural Machine Translation by Jointly Learning to Align and Translate}, In ICLR, 2015.
 \bibitem{ref17} R. Pascanu, T. Mikolov, Y. Bengio, \textit{On the difficulty of training Recurrent Neural Networks}, In ICML, 2013.
+\bibitem{ref18} O. Vinyals, S. Bengio, M. Kudlur, \textit{Order Matters: Sequence to Sequence for Sets}, In ICLR, 2016.
+\bibitem{ref19} S. Hammedi, A. Namoun, M. Shili, \textit{Reinforcement Learning for Real-Time Scheduling in Dynamic Reconfigurable Manufacturing Systems}, International Journal of Advanced Computer Science and Applications (IJACSA), 2025.
+\bibitem{ref20} C. Zhang, M. Juraschek, C. Herrmann, \textit{Deep reinforcement learning-based dynamic scheduling for resilient and sustainable manufacturing: A systematic review}, Journal of Manufacturing Systems, 2024.
+\bibitem{ref21} M. Sangiorgio, F. Dercole, \textit{Robustness of LSTM neural networks for multi-step forecasting of chaotic time series}, Chaos, Solitons \& Fractals, 2020.
+\bibitem{ref22} T. Mihaylova, A. F. T. Martins, \textit{Scheduled Sampling for Transformers}, In ACL, 2019.
 % \bibitem{refx} Author, Title, Journal, Year.
 
 
