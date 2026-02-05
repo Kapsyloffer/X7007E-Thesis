@@ -117,9 +117,14 @@ The primary objectives of this thesis are:
 
 \section{Visualization of the Problem}
 
-This visualization describes the flow of the assembly line along two axes: one representing stations and one representing clock-cycles. A clock-cycle is defined as the time required for an item to move from one station to the next. In the visualization, items are displayed in a way that reflects the relative duration of processing at each station. In \autoref{fig:assembly}, this is illustrated by stretching items along the timeline to better represent the duration of the task relative the duration of the full size of a station, hereafter referred to as a clock-cycle. Note that a clock-cycle is an arbitrary unit of time and does not correspond to real-world durations. For the purpose of this thesis, one clock-cycle is defined as the time it takes for an arbitrary item $X$ to move from station $S_n$ to station $S_{n+1}$, also defined as \textbf{Takt} \ref{tab:genconsts}.
+This visualization describes the flow of the assembly line along two axes: stations ($S_n$) and clock-cycles ($T$). A clock-cycle is defined as the logical step in which the assembly line advances, representing the time required for an item to move from one station to the next (referred to as \textbf{Takt}, see \ref{tab:genconsts}). In the visualization, items are stretched along the timeline to reflect their processing duration relative to this fixed window. Although the clock-cycle represents a specific unit of time in the model ($700$ Cmin), the visualization treats it as a relative step to illustrate sequencing logic.
 
-Each allocation on the timeline may borrow time from a previous or upcoming station, the borrowable area is referred to as the \textit{"drift area"} (\ref{chap:drift}). 
+Each allocation on the timeline may extend beyond its standard cycle by borrowing time from a previous or upcoming station. This borrowable buffer is referred to as the \textit{"drift area"} (\ref{chap:drift}). A drift area serves as a transitional zone between $S_n$ and $S_{n+1}$. While both stations have permission to borrow time within this space, the physical constraint is that only one station may utilize the drift area at any single moment. This flexibility is crucial for fitting labour-intensive items onto the line without halting production. However, this shared resource is also the primary source of our scheduling conflicts.
+
+As illustrated in \autoref{fig:assembly}, item $D$ requires additional processing time on station $S_4$, $T+2$ and is forced to utilize the drift area from both $S_3$ and $S_5$. While this single allocation is valid, a conflict arises at $T+2$ because the subsequent item, $E$, also requires the use of the shared drift area between $S_4$ and $S_5$. Since the space cannot be occupied by both simultaneously, this causes an overload that necessitates a line halt. Visualized as an overlap.
+
+A similar conflict appears at $T$ with items $F$ and $G$. Both items require borrowing time from the preceding and succeeding stations. Because the available drift capacity is insufficient to accommodate the combined duration of both tasks, they create an overlap where the items \textit{cannot} fit.
+
 
 \begin{figure}[ht]
     \centering
@@ -189,16 +194,6 @@ Each allocation on the timeline may borrow time from a previous or upcoming stat
     \label{fig:assembly}
 \end{figure}
 
- A drift area in this case is a transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line without slowing down production pace. However, these conveniences (which at first glance makes this problem easier) are the most problematic parts of this problem.
-
-As pictured in \autoref{fig:assembly}, $D$ will take a lot of time on $S_4$ and is forced to utilize time from $S_3$ and $S_5$. 
-While this works well in a vacuum, the problems start to arise when $E$ also has to utilize additional time from its neighbouring stations, causing an overload between $D$ and $E$ at $T+2$ as they both require the use of the drift area. 
-
-The same problem can be seen at $T$ with $F$ and $G$ as both items need to borrow time from the stations before and after. Thus we run into an overload, as the items \textit{cannot} fit.
-
-It is important to note that on $T$, $E$ does not utilize the drift area which results in it aligning perfectly with $F$ on the timeline, this may look good on paper but can result in overload in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
-
-The same issue occurs at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
 \section{Jump-in and Jump-out}
 In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it shouldn't enter the assembly line at all. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}. \cite{ref6}
@@ -449,7 +444,7 @@ For data generation the following constants are used:
         Stations   & $39$      & Total number of stations. \\
         Takt       & $700$     & The duration of a station ($Cmin$). \\
         Drift      & $200$     & The duration of one drift area for $S$ ($Cmin$) \\
-        Gap        & $10$      & Minimum anount of time ($Cmin$) between generated objects. \\
+        Gap        & $10$      & Minimum amount of time ($Cmin$) between generated objects. \\
         min\_size  & $100$     & Shortest possible duration of an object ($Cmin$). \\
         max\_size  & $Takt + 2 \times Drift$ & Largest possible duration of an object ($Cmin$). \\
         Multiplier & $5000$    & Constant value to multiply \textit{Objects} with, used for Training.\\
@@ -482,9 +477,9 @@ Where $S$ is the size (duration) of the new task. The tentative offset, $O_{calc
     O_{calc} = t_{start} + \frac{B}{2}
 \end{equation}
 
-This formula ensures that if the previous task finishes early, the new task is centered in the wide gap; if the previous task finishes late, the buffer shrinks, effectively pulling the new task closer to the previous one.
+This formula ensures that if the previous task finishes early, the new task is centered in the empty space. However, if the previous task finishes late, the buffer shrinks, effectively pulling the new task closer to the previous one.
 
-Finally, to ensure the object adheres to physical station boundaries and drift limitations ($D$), the calculated offset is clamped. The maximum permissible offset is defined such that the task end does not exceed the drift limit ($T+D$):
+Finally, to ensure the object adheres to physical station boundaries and drift limitations ($D$), the calculated offset is clamped. The maximum permissible offset is defined such that the task end does not exceed the drift area ($T+D$):
 
 \begin{equation}
     O_{calc} = \max(-D, \min(O_{calc}, T + D - S))
@@ -546,7 +541,7 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
 \subsection{Constructive Data Generation as a Solved Puzzle} 
 \label{sub:datagen}
 
-To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than placing tasks stochastically and checking for validity, the system employs a constructive generation algorithm which builds one object at the time. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training. Due to how the entire sequence generates left to right the risk for overlaps is nonexistent.
+To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than placing tasks stochastically and checking for validity, the system employs a constructive generation algorithm which builds one object at a time. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training. Because the entire sequence generates left to right the risk for overlaps is nonexistent.
 
 \subsubsection*{Dependency-Based Positioning}
 The placement of any given allocation $A_{[T_n , S_n]}$ (Timeslot $T_n$ at Station $S_n$) is not independent. It is strictly constrained by two spatial-temporal boundaries derived from the existing grid state:
@@ -665,7 +660,7 @@ Two of the models examined in this thesis, the Sequence-To-Sequence model and th
 
 This reliance proves problematic because the processed data in this thesis does not consist of static words from a dictionary, rather a dynamic set of \textit{unique} objects that changes with every production batch. Consequently, the model cannot predict a token from a learned list, rather it must instead select from the variable input provided on that sequence.
 
-Furthermore, specific combinatorial constraints must be imposed. Natural language generation is probabilistic and inherently allows for repetition, and if poorly trained might default to the "easiest" alternative. (e.g., the word "the" repeating multiple times, due to it being the most common word in the english language). 
+Furthermore, specific combinatorial constraints must be imposed. Natural language generation is probabilistic and inherently allows for repetition, and if poorly trained might default to the "easiest" alternative. (e.g., the word "the" repeating multiple times, due to it being the most common word in the English language). 
 
 In our use-case, each object within the input \textit{must} appear in the output sequence \textit{exactly once}, and the length of the output sequence \textit{must} match the length of the input sequence. Therefore, the architecture must be adapted to enforce this combinatorial constraint, ensuring valid permutations rather than simply generating the most statistically probable tokens (\ref{chap:workarounds}).
 
@@ -680,7 +675,7 @@ The Sequence-To-Sequence model is implemented here without an Embedding layer. I
 
 \subsection{Soft Decoding}
 
-The Sequence-To-Sequence model employs a "soft" feedback loop during sequence generation. In traditional language processing, the decoder typically commits to a single discrete choice by selecting the most probable word and treating it as the ground truth for the subsequent step. In this context, however, rigid early choices can trap the model in sub-optimal paths. To mitigate this, the model feeds the full probability distribution into the next step rather than a single discrete selection. By propagating uncertainty rather than discarding it, the system can dynamically refine its strategy as the output sequence is constructed.
+The Sequence-To-Sequence model employs a "soft" feedback loop during sequence generation. In traditional language processing, the decoder typically commits to a single discrete choice by selecting the most probable word and treating it as the ground truth for the subsequent step. In this context, however, rigid early choices can trap the model in sub-optimal paths. To mitigate this, the model feeds the full probability distribution into the next step rather than a single discrete selection. By propagating uncertainty rather than discarding it, the system can dynamically refine its strategy as the output sequence is constructed. This works in tandem with the teacher forcing training method. (See \ref{sec:training})
 
 \subsection{The Pointer Head}
 \label{sub:phead}
