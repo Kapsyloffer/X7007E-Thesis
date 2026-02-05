@@ -54,39 +54,39 @@ EU funding).
 
 \chapter*{Definitions}
 
-\begin{description}
-    \item[Allocation] A specific instance of a task being assigned to a station. It is defined physically by the dimensions (duration) of the object and temporally by its placement within the station's available time window.
-
-    \item[Borrowing] A mechanism within the Drift Area that allows a specific task to utilize time allocated to neighbouring stations. For a station $S_{n}$, borrowing permits the usage of time from $S_{n-1}$ and $S_{n+1}$ to accommodate tasks that exceed \textbf{Takt} in duration.
-
-    \item[Centiminute (Cmin)] A unit of time measurement equal to one-hundredth of a minute ($1 \text{ Cmin} = 0.01 \text{ min}$). It is the standard unit of time used for time-based calculations in this thesis.
-
-    \item[Clock-cycle] The logical step in which the assembly line advances. It represents the duration required for an item to move from station $S_{n}$ to $S_{n+1}$. In the visualization, items are stretched along the timeline to reflect relative processing duration, meaning a clock-cycle does not correspond to a fixed real-world duration.
-
-    \item[Drift] The duration of a drift area in Centiminutes (Cmin).
-
-    \item[Drift Area] A transitional buffer zone intersecting two neighbouring stations $S_{n}$ and $S_{n+1}$. This area allows for flexibility in scheduling by permitting stations to borrow time from one another, though only one station may utilize the specific drift area at a time.
-    
-    \item[Halt] The need to stop the entire production from proceeding due to overloads.
-
-    \item[Jump-in] The process of reintegrating a product into an already staged sequence on the assembly line. 
-
-    \item[Jump-out] The process where a product must be temporarily removed from the sequence because it is missing critical components. 
-
-    \item[Mixed-Model Assembly Line (MMAL)] A manufacturing line that produces different product variants on a single line. In this environment, variations in tasks can cause overloads across workstations that require halting.
-    
-    \item[Overlap] A visualization of overloads in our stair-case model.
-
-    \item[Overload] When there is not enough time to complete a sequence of operations, causing a halt on the assembly line.
-
-    \item[Product Sequencing Problem] An NP-hard optimization problem involving the sequencing of product variants on an assembly line with the goal of minimizing scheduling conflicts (Overloads/Overlaps). 
-
-    \item[Sequence] The specific permutation or order in which product variants enter the mixed-model assembly line.
-
-    \item[Takt] The base duration of a work cycle at a standard station, measured in Centiminutes (Cmin). In this thesis, Takt represents the fixed time window available before borrowing is required. 
-
-    \item[Teacher Forcing] A training method where the model is supplied with the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than using its own generated prediction. 
-\end{description}
+% \begin{description}
+%     \item[Allocation] A specific instance of a task being assigned to a station. It is defined physically by the dimensions (duration) of the object and temporally by its placement within the station's available time window.
+%
+%     \item[Borrowing] A mechanism within the Drift Area that allows a specific task to utilize time allocated to neighbouring stations. For a station $S_{n}$, borrowing permits the usage of time from $S_{n-1}$ and $S_{n+1}$ to accommodate tasks that exceed \textbf{Takt} in duration.
+%
+%     \item[Centiminute (Cmin)] A unit of time measurement equal to one-hundredth of a minute ($1 \text{ Cmin} = 0.01 \text{ min}$). It is the standard unit of time used for time-based calculations in this thesis.
+%
+%     \item[Clock-cycle] The logical step in which the assembly line advances. It represents the duration required for an item to move from station $S_{n}$ to $S_{n+1}$. In the visualization, items are stretched along the timeline to reflect relative processing duration, meaning a clock-cycle does not correspond to a fixed real-world duration.
+%
+%     \item[Drift] The duration of a drift area in Centiminutes (Cmin).
+%
+%     \item[Drift Area] A transitional buffer zone intersecting two neighbouring stations $S_{n}$ and $S_{n+1}$. This area allows for flexibility in scheduling by permitting stations to borrow time from one another, though only one station may utilize the specific drift area at a time.
+%
+%     \item[Halt] The need to stop the entire production from proceeding due to overloads.
+%
+%     \item[Jump-in] The process of reintegrating a product into an already staged sequence on the assembly line. 
+%
+%     \item[Jump-out] The process where a product must be temporarily removed from the sequence because it is missing critical components. 
+%
+%     \item[Mixed-Model Assembly Line (MMAL)] A manufacturing line that produces different product variants on a single line. In this environment, variations in tasks can cause overloads across workstations that require halting.
+%
+%     \item[Overlap] A visualization of overloads in our stair-case model.
+%
+%     \item[Overload] When there is not enough time to complete a sequence of operations, causing a halt on the assembly line.
+%
+%     \item[Product Sequencing Problem] An NP-hard optimization problem involving the sequencing of product variants on an assembly line with the goal of minimizing scheduling conflicts (Overloads/Overlaps). 
+%
+%     \item[Sequence] The specific permutation or order in which product variants enter the mixed-model assembly line.
+%
+%     \item[Takt] The base duration of a work cycle at a standard station, measured in Centiminutes (Cmin). In this thesis, Takt represents the fixed time window available before borrowing is required. 
+%
+%     \item[Teacher Forcing] A training method where the model is supplied with the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than using its own generated prediction. 
+% \end{description}
 
 
 \tableofcontents
@@ -95,7 +95,7 @@ EU funding).
 \section{Background}
 This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. 
 
-The main constraint for this problem is that the assembly line moves synchronously, if a single station exceeds its cycle time, often depicted as an overlap (\ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts. The methods used in assembly today are based on human intuition and rules that have accumulated over the years a lot of these subtleties can prove highly restrictive in search of better solutions, and hard to teach new operators.
+The main constraint for this problem is that the assembly line moves synchronously, if a single station exceeds its cycle time, often depicted as an overlap (\ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts. The methods used in assembly today are based on human intuition and rules that have accumulated over the years. These subtleties can prove highly restrictive in search of better solutions, and hard to teach new operators.
 
 \section{Research Problem}
 Current approaches in practice often rely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a more time-based approach could help reduce the number of overloads (\ref{chap:overlap}), and conflicts.
@@ -368,7 +368,7 @@ Overlaps are how station overloads are visualized in this thesis, as we follow t
 \chapter{State of the Art Analysis} 
 \label{ch:sota}
 
-The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formally classified as NP-Hard\cite{ref6}. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms (e.g., Genetic Algorithms or Ant Colony Optimization), rather than using machine learning \cite{ref3}. 
+The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formally classified as NP-Hard\cite{ref6}. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms, rather than using machine learning \cite{ref3}. 
 
 In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal \cite{ref19, ref20}.
 
@@ -544,7 +544,7 @@ Finally, to ensure the object adheres to physical station boundaries and drift l
 To train the machine learning model, a synthetic dataset is required that represents valid, collision-free production schedules. Rather than placing tasks stochastically and checking for validity, the system employs a constructive generation algorithm which builds one object at a time. This approach acts as a forward simulation, placing allocations sequentially to inherently create a "solved puzzle" which serves as the ground truth for training. Because the entire sequence generates left to right the risk for overlaps is nonexistent.
 
 \subsubsection*{Dependency-Based Positioning}
-The placement of any given allocation $A_{[T_n , S_n]}$ (Timeslot $T_n$ at Station $S_n$) is not independent. It is strictly constrained by two spatial-temporal boundaries derived from the existing grid state:
+The placement of any given allocation $A_{[T_n , S_n]}$ (Timeslot $T_n$ at Station $S_n$) is not independent. It is strictly constrained by two boundaries derived from the existing grid state:
 \begin{enumerate}
     \item \textbf{Station Availability:} The station $S_n$ must be free. Therefore, $A_{[T_n , S_n]}$ cannot start until the previous object at $T_{n-1}$ has departed station $S_n$.
     \item \textbf{Object Availability:} The object at $T_n$ must be ready. Therefore, $A_{[T_n , S_n]}$ cannot start until the object at $T_n$ has finished processing at the previous station $S_{n-1}$.
@@ -723,7 +723,7 @@ The models in this thesis are implemented using PyTorch.
 The implemented model adapts the standard Transformer architecture originally proposed by Vaswani et al. \cite{ref5} to handle continuous combinatorial data. Unlike standard NLP models that process discrete tokens, this implementation operates on continuous feature vectors and utilizes a pointer mechanism for output generation.
 
 \subsubsection{Continuous Input Embeddings}
-Standard Transformers typically utilize a lookup table to map discrete vocabulary indices to dense vectors. Since the input data for this problem consists of continuous immutable features (station order (always 1 - n), station times, dimensions), the embedding layer is replaced by a learnable linear projection. 
+Standard Transformers typically utilize a lookup table to map discrete vocabulary indices to dense vectors. Since the input data for this problem consists of continuous immutable features (station order, station times, dimensions), the embedding layer is replaced by a learnable linear projection. 
 
 \subsubsection{Positional Encoding}
 As the Transformer architecture contains no recurrence or convolution, it can thus not distinguish the order of the input objects, essentially treating it as an unordered set. To address this, a fixed sinusoidal Positional Encoding is added to the input embeddings. This provides each element with a unique geometric signature, allowing the model to determine the relative positions of objects within the sequence. The encodings are calculated as \cite{ref5}:
@@ -1150,7 +1150,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
 \end{table}
 
 
-\section{Dataset}
+\section{Production Dataset}
 \label{sec:dataset}
 We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better. How the data was generated is further discussed in \ref{sub:datagen}
 
@@ -1169,7 +1169,7 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 
 The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an overload reduction of 93\% at most on unseen test data, with an average of about 90\%.
 
-While this result indicates strong generalization to new sequences, the exceptionally high performance warrants scepticism regarding the nature of the synthetic dataset. Since the data is generated via a constructive "solved puzzle" heuristic (\ref{sub:datagen}), the resulting tasks contain inherent "fingerprints" of the generation logic, specifically the deterministic \textit{Gap} and \textit{Centering} calculations, these perfections will not be present in real-life data.
+While this result indicates strong generalization to new sequences, the exceptionally high performance warrants scepticism regarding the nature of the synthetic dataset. Since the data is generated via a constructive "solved puzzle" algorithm (\ref{sub:datagen}), the resulting tasks contain inherent "fingerprints" of the generation logic, specifically the deterministic \textit{Gap} and \textit{Centering} calculations, these perfections will not be present in real-life data.
 
 Even though the input sequences are freshly generated and then shuffled during testing, the relationships between compatible tasks remain encoded in their feature vectors. It is highly probable that the Transformer, utilizing its global self-attention mechanism, has successfully "reverse-engineered" these generative artifacts. Rather than learning abstract scheduling principles, the model has likely learned to identify the specific "jigsaw" edges created by the constructive algorithm, allowing it to reconstruct the original ground truth with high fidelity.
 
