@@ -2,6 +2,7 @@
 
 % Packages
 \usepackage[utf8]{inputenc}
+\usepackage[british]{babel}
 \usepackage{setspace}
 \usepackage{geometry}
 \usepackage{hyperref}
@@ -39,7 +40,7 @@
 \maketitle
 
 \begin{abstract}
-A Mixed-Model Assembly Line (MMAL) manufactures different product variants on a single line, where variations in tasks can create imbalances across workstations. When several labour-intensive models appear consecutively, stations may exceed their capacity, leading to overloads that require halting the entire line. This challenge is formalized as the Product Sequencing Problem, an NP-hard optimization task traditionally managed by rule-based heuristics or human intuition.
+A Mixed-Model Assembly Line (MMAL) manufactures different product variants on a single line, where variations in tasks can cause imbalances across workstations. When several labour-intensive models appear consecutively, stations may exceed their capacity, leading to overloads that require halting the entire line. This challenge is formalized as the Product Sequencing Problem, an NP-hard optimization task traditionally managed by rule-based heuristics or human intuition.
 
 This thesis investigates the viability of Deep Learning for solving this problem by emulating valid scheduling logic. We adapt and compare three Neural Network architectures: the \textbf{Sequence-to-Sequence (Seq2Seq)} model and the \textbf{Transformer} (originally derived from Natural Language Processing), alongside the \textbf{Pointer Network} (designed for combinatorial optimization). To overcome the limitations of inconsistent historical records, the models are trained on high-fidelity synthetic data generated via a constructive "solved puzzle" algorithm, which serves as a collision-free ground truth.
 
@@ -54,13 +55,17 @@ EU funding).
 \chapter*{Definitions}
 
 \begin{description}
-    \item[Borrowing] A mechanism within the Drift Area that allows a specific task to utilize time allocated to neighboring stations. For a station $S_{n}$, borrowing permits the usage of time from $S_{n-1}$ and $S_{n+1}$ to accommodate tasks that exceed \textbf{Takt} in duration.
+    \item[Allocation] A specific instance of a task being assigned to a station. It is defined physically by the dimensions (duration) of the object and temporally by its placement within the station's available time window.
 
-    \item[Clock-cycle] An arbitrary unit of time defined as the duration required for an item to move from one station $S_{n}$ to the next station $S_{n+1}$. In the visualization, items are stretched along the timeline to reflect relative processing duration, meaning a clock-cycle does not correspond to a fixed real-world duration. The duration of this cycle is dependent on \textbf{Takt}.
+    \item[Borrowing] A mechanism within the Drift Area that allows a specific task to utilize time allocated to neighbouring stations. For a station $S_{n}$, borrowing permits the usage of time from $S_{n-1}$ and $S_{n+1}$ to accommodate tasks that exceed \textbf{Takt} in duration.
+
+    \item[Centiminute (Cmin)] A unit of time measurement equal to one-hundredth of a minute ($1 \text{ Cmin} = 0.01 \text{ min}$). It is the standard unit of time used for time-based calculations in this thesis.
+
+    \item[Clock-cycle] The logical step in which the assembly line advances. It represents the duration required for an item to move from station $S_{n}$ to $S_{n+1}$. In the visualization, items are stretched along the timeline to reflect relative processing duration, meaning a clock-cycle does not correspond to a fixed real-world duration.
 
     \item[Drift] The duration of a drift area in Centiminutes (Cmin).
 
-    \item[Drift Area] A transitional buffer zone intersecting two neighbouring stations ($S_{n}$ and $S_{n+1}$). This area allows for flexibility in scheduling by permitting stations to borrow time from one another, though only one station may utilize the specific drift area at a time.
+    \item[Drift Area] A transitional buffer zone intersecting two neighbouring stations $S_{n}$ and $S_{n+1}$. This area allows for flexibility in scheduling by permitting stations to borrow time from one another, though only one station may utilize the specific drift area at a time.
     
     \item[Halt] The need to stop the entire production from proceeding due to overloads.
 
@@ -68,7 +73,7 @@ EU funding).
 
     \item[Jump-out] The process where a product must be temporarily removed from the sequence because it is missing critical components. 
 
-    \item[Mixed-Model Assembly Line (MMAL)] A manufacturing line that produces different product variants on a single line. In this environment, variations in tasks can overloads across workstations that require halting.
+    \item[Mixed-Model Assembly Line (MMAL)] A manufacturing line that produces different product variants on a single line. In this environment, variations in tasks can cause overloads across workstations that require halting.
     
     \item[Overlap] A visualization of overloads in our stair-case model.
 
@@ -76,16 +81,15 @@ EU funding).
 
     \item[Product Sequencing Problem] An NP-hard optimization problem involving the sequencing of product variants on an assembly line with the goal of minimizing scheduling conflicts (Overloads/Overlaps). 
 
-    % \item[Station] 
+    \item[Sequence] The specific permutation or order in which product variants enter the mixed-model assembly line.
 
-    \item[Takt] The duration of a clock-cycle, thus the duration of a standard station, in Centiminutes (Cmin). 
+    \item[Takt] The base duration of a work cycle at a standard station, measured in Centiminutes (Cmin). In this thesis, Takt represents the fixed time window available before borrowing is required. 
 
     \item[Teacher Forcing] A training method where the model is supplied with the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than using its own generated prediction. 
+\end{description}
 
 
 \tableofcontents
-
-\end{description}
 
 \chapter{Introduction}
 \section{Background}
@@ -196,7 +200,7 @@ While this works well in a vacuum, the problems start to arise when $E$ also has
 
 The same problem can be seen at $T$ with $F$ and $G$ as both items need to borrow time from the stations before and after. Thus we run into an overload, as the items \textit{cannot} fit.
 
-It is important to note that on $T$, $E$ does not utilize the drift area which results in it sitting flush with $F$ on the timeline, this may look good on paper but can result in overload in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
+It is important to note that on $T$, $E$ does not utilize the drift area which results in it aligning perfectly with $F$ on the timeline, this may look good on paper but can result in overload in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
 
 The same issue occurs at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
@@ -216,7 +220,7 @@ The Drift Area is visualized in this thesis as a gray zone intersecting two neig
 
 For a station $S_n$ (where $Takt = 700$ Cmin), we can use up to $200$ Cmin from $S_{n-1}$ and up to $200$ Cmin from $S_{n+1}$. This is referred to in this thesis as \textbf{Borrowing}. Borrowing this way will give us up to a total time of $1100$ Cmin for any given task, with the caveat of $S_{n-1}$ and $S_{n+1}$ being reduced to a minimum of $500$ Cmin.
 
-It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, then work cannot begin on $n+1$ until it has finished, and while the drift area between two stations is often illustrated as two cojoined zones, $D_s$ should always be considered an extention of $S$, even though it may be seen within $S+1$ or $S-1$.
+It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, then work cannot begin on $n+1$ until it has finished, and while the drift area between two stations is often illustrated as two cojoined zones, $D_s$ should always be considered an extension of $S$, even though it may be seen within $S+1$ or $S-1$.
 
 
 \begin{figure}[htbp]
@@ -370,22 +374,22 @@ Overlaps are how station overloads are visualized in this thesis, as we follow t
 
 \end{figure}
 
-\chapter{State of the Art Analysis} %FIXME
+\chapter{State of the Art Analysis} 
 \label{ch:sota}
 
+The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formally classified as NP-Hard\cite{ref6}. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms (e.g., Genetic Algorithms or Ant Colony Optimization), rather than using machine learning \cite{ref3}. 
 
-The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formally classified as NP-Hard. Traditionally, these optimization problems are addressed using heuristic or meta-heuristic algorithms, rather than using machine learning.
+In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal \cite{ref19, ref20}.
 
-In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal. \cite{ref19} \cite{ref20}
+For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Algorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load \cite{ref10}.
 
-For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Algorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
+A primary constraint of this research is the restriction to synthetic data, without access to a live production environment or a verified feedback loop. Reinforcement Learning (RL) relies on the ability to execute actions and receive immediate rewards. Without an interactive environment or a validated simulator to provide this feedback, training an RL agent is infeasible. Therefore, this study approaches the problem through Supervised Learning. This paradigm leverages the available "solved" instances to train a model to mimic expert sequencing patterns, circumventing the need for the interactive state-space exploration required by RL agents.
 
-However, reinforcement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overloads that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Supervised Learning was chosen instead.
+Furthermore, while DRL is effective for dynamic environments where rules change frequently, it introduces complexity that goes beyond simple resource constraints. Even if a simulator were available, the careful engineering of state and action spaces remains a significant hurdle. Additionally, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
 
-While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
+Current manual approaches rely heavily on knowledge accumulated through experience that is difficult to articulate as explicit rules, especially if rules have accumulated over time. This thesis proposes capturing this knowledge using Supervised Learning, a paradigm formally known in this context as Imitation Learning \cite{ref11}. 
 
-Current manual approaches rely heavily on the "tacit knowledge" of management staff, knowledge accumulated through experience that is difficult to articulate as explicit rules, especially if rules have accumulated over time. This thesis proposes capturing this knowledge using Supervised Learning,a paradigm formally known in this context as Imitation Learning. A precedent for this methodology is established by Dupuis et al. \cite{ref2}, who successfully trained a Sequence-to-Sequence (Seq2Seq) model using teacher-forcing to generate production schedules.
-
+A precedent for this methodology is established by Dupuis et al. \cite{ref2}, who successfully trained a Sequence-to-Sequence (Seq2Seq) model using teacher-forcing to generate production schedules.  More recently, however, attention-based architectures have shown promise in this domain.  Youssef et al. \cite{ref14} applied Transformers to autonomous task scheduling, while Giannoulis et al. \cite{ref13} demonstrated their efficacy in solving combinatorial problems through trial and error.
 
 \section{Recurrent Architectures}
 \label{sec:recurrent_arch}
@@ -395,23 +399,25 @@ To emulate the sequential decision-making process of human schedulers, we first 
 \subsection{Long Short-Term Memory (LSTM)}
 \label{subsec:lstm}
 
-In previous works addressing similar scheduling problems, researchers have applied Recurrent Neural Networks (RNNs), often utilizing Long Short-Term Memory (LSTM) units within a sequence-to-sequence (Seq2Seq) framework \cite{ref2}.
+In previous works addressing similar scheduling problems, researchers have applied Recurrent Neural Networks (RNNs), often utilizing Long Short-Term Memory (LSTM) units within a sequence-to-sequence (Seq2Seq) framework \cite{ref2}. 
 
-A defining characteristic of LSTMs is their ability to selectively forget irrelevant or outdated information via the "forget gate". This mechanism allows the model to focus on relevant patterns over time, mitigating the vanishing gradient problem inherent in standard RNNs and improving the modeling of long-term dependencies \cite{ref4, ref9}.
+A defining characteristic of LSTMs is their ability to selectively forget irrelevant or outdated information via the "forget gate". This mechanism allows the model to focus on relevant patterns over time, mitigating the vanishing (or exploding) gradient problem inherent in standard RNNs and improving the modeling of long-term dependencies \cite{ref4, ref9, ref17}. 
+Furthermore, LSTMs have demonstrated robustness in multi-step forecasting tasks even in chaotic regimes, suggesting potential stability for scheduling applications \cite{ref21}. 
 
 \subsection{Sequence-to-Sequence (Seq2Seq) Models}
 
-Seq2Seq models, typically built upon encoder-decoder RNN architectures, are designed to map an input sequence to an output sequence of a different length or order \cite{ref2}.  While traditionally applied to machine translation (e.g., transforming English to Swedish), this architecture is adaptable to the assembly line problem. In this context, the input is a sequence of vectorized product orders, and the output is the permuted production sequence \cite{ref3}.
+Seq2Seq models, typically built upon encoder-decoder RNN architectures, are designed to map an input sequence to an output sequence of a different length or order \cite{ref2}. While traditionally applied to machine translation (e.g., transforming English to Swedish) \cite{ref16}, 
+this architecture is adaptable to the assembly line problem. In this context, the input is a sequence (or set) of vectorized product orders, and the output is the permuted production sequence \cite{ref3}.
 
-However, applying standard Seq2Seq models to permutation problems presents a specific challenge: \textbf{vocabulary definition}. Standard NLP models select outputs from a fixed, pre-defined vocabulary, similar to a dictionary. In a manufacturing context, where every day's product list is unique, a fixed vocabulary is insufficient. The model must instead learn to select from the dynamic input available that day, a task that is non-trivial for standard Seq2Seq architectures unless they strictly rely on abstract sequence indices \cite{ref2, ref3}.
+However, applying standard Seq2Seq models to permutation problems presents a specific challenge: \textbf{vocabulary definition}. Standard NLP models select outputs from a fixed, pre-defined vocabulary, similar to a dictionary. In a manufacturing context, where every day's product list is unique, a fixed vocabulary is insufficient. The model must instead learn to select from the dynamic input available that day (treating the input as a set rather than a fixed sequence), a task that is non-trivial for standard Seq2Seq architectures unless they strictly rely on abstract sequence indices \cite{ref2, ref3, ref18}. 
 
-One way to remedy this limitation is to modify the decoder to point directly to the input elements, an approach that leads to the development of Pointer Networks,
+One way to remedy this limitation is to modify the decoder to point directly to the input elements, an approach that leads to the development of Pointer Networks. Additionally, techniques such as Scheduled Sampling have been proposed to bridge the gap between training (with teacher forcing) and inference \cite{ref22, ref2}. 
 
 \subsection{Limitations of Recurrent Architectures}
 
-Despite their historical success, RNN and LSTM-based models suffer from a significant bottleneck: \textbf{sequential processing}. This is because these models must process the input sequence step-by-step, so that item $t$ depends on item $t-1$, they cannot parallelize computation either. This results in slower training times and, more importantly, a limited ability to capture a lot of global context across the entire schedule simultaneously \cite{ref4}.
+Despite their historical success, RNN and LSTM-based models suffer from a significant bottleneck: \textbf{sequential processing}. This is because these models must process the input sequence step-by-step, so that item $t$ depends on item $t-1$; they cannot parallelize computation efficiently. This results in slower training times and, more importantly, a limited ability to capture a lot of global context across the entire schedule simultaneously \cite{ref4}.
 
-This limitation motivates the shift toward \textbf{Attention-based approaches}, which process the entire sequence in parallel, and has a larger global context scope.
+This limitation motivates the shift toward \textbf{Attention-based approaches}, which process the entire sequence in parallel, and has a larger global context scope. The concept of attention was initially introduced to align inputs and outputs in RNNs \cite{ref16}, but later evolved into standalone architectures. 
 
 \section{Attention-Based Architectures}
 \label{sec:attention_arch}
@@ -419,20 +425,21 @@ This limitation motivates the shift toward \textbf{Attention-based approaches}, 
 \subsection{The Transformer Model}
 \label{subsec:transformer}
 
-To address the sequential bottlenecks of RNNs, Transformer-based architectures discard recurrence entirely, relying instead on a self-attention mechanism \cite{ref5}.
+To address the sequential bottlenecks of RNNs, Transformer-based architectures discard recurrence entirely, relying instead on a self-attention mechanism \cite{ref5}. This architecture often employs Layer Normalization to stabilize training dynamics \cite{ref1}. 
 
-The defining characteristic of the Transformer is the use of scaled dot-product attention. This allows the model to weigh the importance of each element in a given sequence relative to all other elements in that same sequence, regardless of distance. \cite{ref14} This parallelized computation not only accelerates training but enables the model to capture global dependencies more effectively than RNN-based methods. Since Transformers are order-agnostic, positional encodings are added to the input vectors to retain sequence order information \cite{ref5}.
+The defining characteristic of the Transformer is the use of scaled dot-product attention. This allows the model to weigh the importance of each element in a given sequence relative to all other elements in that same sequence, regardless of distance \cite{ref14}. This parallelized computation not only accelerates training but enables the model to capture global dependencies more effectively than RNN-based methods. Since Transformers are order-agnostic, positional encodings are added to the input vectors to retain sequence order information \cite{ref5, ref12}. 
 
-For combinatorial scheduling problems, this translates into the ability to model complex interactions across the entire planning horizon. \cite{ref13} The placement of one item can be directly conditioned on all others in the same day's sequence, providing the context awareness necessary for effective assembly line scheduling \cite{ref8}.
+For combinatorial scheduling problems, this translates into the ability to model complex interactions across the entire planning horizon \cite{ref13}. The placement of one item can be directly conditioned on all others in the same day's sequence, providing the context awareness necessary for effective assembly line scheduling \cite{ref8}.
 
 \subsection{Pointer Networks}
 \label{subsec:pointer_nets}
 
-While Transformers excel at context, they still typically rely on generating tokens from a fixed vocabulary. The \textbf{Pointer Network} is the only architecture in this analysis specifically designed for combinatorial optimization and permutation problems \cite{ref7}.
+While Transformers excel at context, they still typically rely on generating tokens from a fixed vocabulary. The \textbf{Pointer Network} is the architecture in this analysis most specifically designed for combinatorial optimization and permutation problems \cite{ref7}.
 
-Implemented using an encoder-decoder structure of the sequence-to-sequence model, the Pointer Network utilizes a specialized attention mechanism to generate context vectors that "point" to specific elements in the input sequence rather than predicting a value from a dictionary. 
+Implemented using an encoder-decoder structure (often using RNNs, though adaptable to Transformers), the Pointer Network utilizes a specialized attention mechanism to generate context vectors that "point" to specific elements in the input sequence rather than predicting a value from a dictionary.
 
-This model is explicitly designed with combinatorial problems in mind, such as the traveling salesman problem, convex hull, and other combinatorial optimization problems. \cite{ref7} It is thus well-suited for the mixed-model assembly line problem (MMAL), as the object attributes (such as station order, or time to complete) are immutable, and the only thing that matters for our case is the permutation/rearrangement.
+This model is explicitly designed with combinatorial problems in mind, such as the traveling salesman problem, convex hull, and other combinatorial optimization problems \cite{ref7, ref13}. 
+It is thus well-suited for the mixed-model assembly line problem (MMAL), as the object attributes (such as station order, or time to complete) are immutable, and the only thing that matters for our case is the permutation/rearrangement.
 
 
 \chapter{Methodology}
@@ -450,7 +457,7 @@ For data generation the following constants are used:
         \midrule
         Objects    & $100$     & Total number of objects in the testing sequence. \\
         Stations   & $39$      & Total number of stations. \\
-        Takt       & $700$     & The duration of a cycle ($Cmin$). \\
+        Takt       & $700$     & The duration of a station ($Cmin$). \\
         Drift      & $200$     & The duration of one drift area for $S$ ($Cmin$) \\
         Gap        & $10$      & Minimum anount of time ($Cmin$) between generated objects. \\
         min\_size  & $100$     & Shortest possible duration of an object ($Cmin$). \\
@@ -769,7 +776,7 @@ This implementation of the Transformer replaces the vocabulary projection layers
 The implemented model is a standard Sequence-To-Sequence model with modifications clarified in \ref{chap:workarounds}.
 
 \subsubsection{Continuous Input Encoder}
-The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly. 
+The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly.  \cite{ref4, ref8}
 
 \subsubsection{Attention Mechanism}
 To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
@@ -850,7 +857,7 @@ The feature extraction is performed by selecting specific keys ($s_1 \dots s_N$)
 Due to memory constraints, the sequences exceeding the maximum defined length are chunked into smaller subsequences to manage memory constraints effectively. (\ref{sub:limit})
 
 \subsection{Shuffled Task Generation}
- The dataset stores the ground truth sequences in their correct, sorted order. However, the data is effectively augmented during the training phase by randomly shuffling the input sequence at every iteration. This stochastic approach ensures that the model encounters the same sequence twice.
+ The dataset stores the ground truth sequences in their correct, sorted order. However, the data is effectively augmented during the training phase by randomly shuffling the input sequence at every iteration. This stochastic approach ensures that the model \textit{never} encounters the same sequence twice.
 
 To accommodate this shuffling, the target vector is dynamically generated to represent the specific indices required to reconstruct the original order from the disordered input. If the shuffled input is denoted as $X'$ and the original sorted sequence as $X$, the target index $y_t$ for time step $t$ is calculated to satisfy the condition:
 \begin{equation}
@@ -888,7 +895,7 @@ We apply this strategy across all three architectures, though the implementation
 
 \begin{enumerate}
     \item \textbf{Recurrent Models (Seq2Seq \& Pointer Network):} For the RNN-based architectures, Teacher Forcing is applied sequentially. During the forward pass, the decoder receives the ground-truth token $y_{t-1}$ explicitly at each time step to compute the hidden state and output for time $t$. \cite{ref2}
-    \item \textbf{Transformer:} As the Transformer processes sequences in parallel, Teacher Forcing is implemented implicitly via the \textbf{Look-Ahead Mask} described previously. By masking future positions, the self-attention mechanism at position $t$ is restricted to attending only to the ground-truth sequence indices $[0, t-1]$, effectively replicating the Teacher Forcing behavior without a recurrent loop. \cite{ref22} \cite{ref5}
+    \item \textbf{Transformer:} As the Transformer processes sequences in parallel, Teacher Forcing is implemented implicitly via the \textbf{Look-Ahead Mask} described previously. By masking future positions, the self-attention mechanism at position $t$ is restricted to attending only to the ground-truth sequence indices $[0, t-1]$, effectively replicating the Teacher Forcing behaviour without a recurrent loop. \cite{ref22} \cite{ref5}
 \end{enumerate}
 
 
@@ -1173,6 +1180,7 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 
 \chapter{Discussion}
 \section{Interpretation of Results}
+\label{sub:int}
 
 The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an overload reduction of 93\% at most on unseen test data, with an average of about 90\%.
 
@@ -1180,7 +1188,7 @@ While this result indicates strong generalization to new sequences, the exceptio
 
 Even though the input sequences are freshly generated and then shuffled during testing, the relationships between compatible tasks remain encoded in their feature vectors. It is highly probable that the Transformer, utilizing its global self-attention mechanism, has successfully "reverse-engineered" these generative artifacts. Rather than learning abstract scheduling principles, the model has likely learned to identify the specific "jigsaw" edges created by the constructive algorithm, allowing it to reconstruct the original ground truth with high fidelity.
 
-This hypothesis is supported by the performance gap between the Transformer (93\%), and the RNN-Based (Seq2Seq \& Pointer Network) models (~75\%). The Transformer can inspect the entire shuffled "pool" of tasks simultaneously to find optimal pairings, whereas the RNNs must attempt to reconstruct the puzzle linearly, making it harder to spot these global, puzzle piece connections. %fishy
+This hypothesis is supported by the performance gap between the Transformer (93\%), and the RNN-Based (Seq2Seq \& Pointer Network) models (~75\%). The Transformer can inspect the entire shuffled "pool" of tasks simultaneously to find optimal pairings, whereas the RNNs must attempt to reconstruct the puzzle linearly \cite{ref17}, making it harder to spot these global, puzzle piece connections. %fishy'
 
 \section{Limitations}
 \subsection{Testing and Training Data}
@@ -1188,13 +1196,15 @@ Due to the limited size and inconsistency of available production data, this stu
 
 \subsection{Hardware and Resource Limitations}
 \label{sub:limit}
-The training process was strictly bound by the available GPU Video RAM (VRAM). The Transformer architecture, which has a quadratic memory complexity relative to sequence length, frequently triggered \textit{CUDA out of memory} errors during experimentation. 
+The training process was strictly bound by the available VRAM. The Transformer architecture, which has a quadratic memory complexity relative to sequence length, frequently triggered \textit{CUDA out of memory} errors during experimentation. 
 
 To maintain training stability, it was necessary to reduce the batch size. However, small batch sizes introduce gradient noise, making it computationally infeasible to converge effectively on a massive dataset (millions of samples). Consequently, the training dataset was capped at $500,000$ samples to balance memory constraints with training duration. Future work utilizing hardware with higher VRAM capacities would allow for larger batch sizes, enabling the model to learn from the millions of examples required for optimal generalization.
 
 \section{Future Work}
 
 Future iterations of this research should prioritize bridging the gap between synthetic success and real-world application. While the current model demonstrates strong heuristic learning, scaling the training data via better computing hardware could help resolve the remaining overloads. Specifically, optimizing the data serialization pipeline would enable the processing of millions of sequences, potentially allowing the Transformer to generalize from "strong approximation" to "perfect solution."
+
+To mitigate the risk of the model overfitting to specific generative heuristics (\ref{sub:int}), future data generation pipelines should introduce stochastic variability in the "Gap" constant and centering logic. By training on datasets with irregular spacing and intentional noise, the model would be forced to learn robust general scheduling principles rather than simply reverse-engineering the constructive algorithm's fixed rules.
 
 Additionally, it would be valuable to investigate the feasibility of Online Learning paradigms. Implementing a Human-in-the-Loop (HITL) strategy would allow the model to adapt in real-time to operator overrides. This would effectively capture the true "knowledge" of the assembly line reasoning that cannot be fully encapsulated in a synthetic training set.
 
@@ -1208,14 +1218,14 @@ Additionally, it would be valuable to investigate the feasibility of Online Lear
 \bibitem{ref5} A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin, \textit{Attention is All You Need}, Advances in Neural Information Processing Systems (NeurIPS), vol.~30, 2017.
 \bibitem{ref6} C. Fink, O. Schelén, and U. Bodin, \textit{Work in progress: Decision support system for rescheduling blocked orders}, Department of Computer Science, Electrical and Space Engineering, Luleå University of Technology, 2023.
 \bibitem{ref7} O. Vinyals, M. Fortunato, and N. Jaitly, \textit{Pointer Networks}, Department of Mathematics, University of California Berkeley, 2015.
-\bibitem{ref8} E. Stevens, L. Antiga, T. Ciehmann, \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
+\bibitem{ref8} E. Stevens, L. Antiga, T. Viehmann, \textit{Deep Learning with PyTorch, ISBN: 9781617295263}, Manning Publications, 2020.
 \bibitem{ref9} S. Hochreiter, \textit{The vanishing gradient problem during learning recurrent neural nets and problem solutions}, Institut für Informatik, Technische Universität München, D-80290, 1998.
 \bibitem{ref10} L. Chen, L. Zhou, M. Zhou, X. Lu, Y. Zhu, W. Song, Z. Lu, J. Li, \textit{Deep Reinforcement Learning Based Dynamic Scheduling of Random Arrival Tasks in Cloud Manufacturing}, Proceedings of the 6th International Conference on Universal Village (UV), 2022.
 \bibitem{ref11} T. Mitchell, \textit{Machine Learning}, 9780070428072, McGraw-Hill, 1997. 
 \bibitem{ref12} J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, \textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}, Proceedings of NAACL-HLT, 2019.
 \bibitem{ref13} P. Giannoulis, Y. Pantis, C. Tzamos, \textit{Teaching Transformers to Solve Combinatorial Problems through Efficient Trial \& Error}, Advances in Neural Information Processing Systems (NeurIPS), 2025.
 \bibitem{ref14} Y. Youssef, P. R. M. de Araujo, A. Noureldin, S. Givigi, \textit{TRATSS: Transformer-Based Task Scheduling System for Autonomous Vehicles}, arXiv preprint arXiv:2504.05407, 2025.
-\bibitem{ref15} D. Kingma, J. L. Ba, \textit{Adam: A Method for Stochastic Optimization}, In ICLR, 2015.
+\bibitem{ref15} I. Loshchilov and F. Hutter, \textit{Decoupled Weight Decay Regularization}, In ICLR, 2019.
 \bibitem{ref16} D. Bahdanau, K. Cho, Y. Bengio, \textit{Neural Machine Translation by Jointly Learning to Align and Translate}, In ICLR, 2015.
 \bibitem{ref17} R. Pascanu, T. Mikolov, Y. Bengio, \textit{On the difficulty of training Recurrent Neural Networks}, In ICML, 2013.
 \bibitem{ref18} O. Vinyals, S. Bengio, M. Kudlur, \textit{Order Matters: Sequence to Sequence for Sets}, In ICLR, 2016.
