@@ -43,7 +43,7 @@ A Mixed-Model Assembly Line (MMAL) manufactures different product variants on a 
 
 This thesis investigates the viability of Deep Learning for solving this problem by emulating valid scheduling logic. We adapt and compare three Neural Network architectures: the \textbf{Sequence-to-Sequence (Seq2Seq)} model and the \textbf{Transformer} (originally derived from Natural Language Processing), alongside the \textbf{Pointer Network} (designed for combinatorial optimization). To overcome the limitations of inconsistent historical records, the models are trained on high-fidelity synthetic data generated via a constructive "solved puzzle" algorithm, which serves as a collision-free ground truth.
 
-The models are evaluated on their ability to minimize station overlaps in permuted sequences. Results demonstrate that the \textbf{Transformer} architecture significantly outperforms the recurrent models, achieving a \textbf{93\% reduction in overlaps} on unseen test data, compared to approximately 72--75\% for the RNN-based approaches. These findings suggest that attention-based mechanisms are superior in capturing the global context required for complex constraint satisfaction in manufacturing.
+The models are evaluated on their ability to minimize station overloads in permuted sequences. Results demonstrate that the \textbf{Transformer} architecture significantly outperforms the recurrent models, achieving a \textbf{93\% reduction in overloads} on unseen test data, compared to approximately 72--75\% for the RNN-based approaches. These findings suggest that attention-based mechanisms are superior in capturing the global context required for complex constraint satisfaction in manufacturing.
 \end{abstract}
 
 \chapter*{Acknowledgements} 
@@ -54,9 +54,9 @@ EU funding).
 \chapter*{Definitions}
 
 \begin{description}
-    \item[Borrowing] A mechanism within the Drift Area that allows a specific task to utilize time allocated to neighboring stations. For a station $S_{n}$, borrowing permits the usage of time from $S_{n-1}$ and $S_{n+1}$ to accommodate tasks that exceed the standard cycle time.
+    \item[Borrowing] A mechanism within the Drift Area that allows a specific task to utilize time allocated to neighboring stations. For a station $S_{n}$, borrowing permits the usage of time from $S_{n-1}$ and $S_{n+1}$ to accommodate tasks that exceed \textbf{Takt} in duration.
 
-    \item[clock-cycle] An arbitrary unit of time defined as the duration required for an item to move from one station $S_{n}$ to the next station $S_{n+1}$. In the visualization, items are stretched along the timeline to reflect relative processing duration, meaning a clock-cycle does not correspond to a fixed real-world duration. The duration of this cycle is dependent on Takt.
+    \item[Clock-cycle] An arbitrary unit of time defined as the duration required for an item to move from one station $S_{n}$ to the next station $S_{n+1}$. In the visualization, items are stretched along the timeline to reflect relative processing duration, meaning a clock-cycle does not correspond to a fixed real-world duration. The duration of this cycle is dependent on \textbf{Takt}.
 
     \item[Drift] The duration of a drift area in Centiminutes (Cmin).
 
@@ -64,23 +64,23 @@ EU funding).
     
     \item[Halt] The need to stop the entire production from proceeding due to overloads.
 
-    \item[Jump-in] The process of reintegrating a product that was previously removed (jumped-out) back into the assembly line. From an algorithmic perspective, this is treated as an $O(n)$ problem, requiring inspection of positions in a sequence to determine the best insertion point.
+    \item[Jump-in] The process of reintegrating a product into an already staged sequence on the assembly line. 
 
-    \item[Jump-out] The process where a product must be temporarily removed from the sequence because it is missing critical components. This is considered an $O(1)$ problem but creates a gap in the line that must be managed to avoid throughput loss.
+    \item[Jump-out] The process where a product must be temporarily removed from the sequence because it is missing critical components. 
 
-    \item[Mixed-Model Assembly Line (MMAL)] A manufacturing line that produces different product variants on a single line. In this environment, variations in tasks can create imbalances and overloads across workstations.
+    \item[Mixed-Model Assembly Line (MMAL)] A manufacturing line that produces different product variants on a single line. In this environment, variations in tasks can overloads across workstations that require halting.
     
-    \item[Online Learning] The process of a model learning in production, similar to an Online Algorithm. %FIXME
- 
-    \item[overlap] a visualization of overloads.
+    \item[Overlap] A visualization of overloads in our stair-case model.
 
     \item[Overload] When there is not enough time to complete a sequence of operations, causing a halt on the assembly line.
 
-    \item[Product Sequencing Problem] An NP-hard optimization task involving the ordering of product variants on a line to minimize scheduling conflicts. Traditionally, this is managed by rule-based heuristics or human intuition.
+    \item[Product Sequencing Problem] An NP-hard optimization problem involving the sequencing of product variants on an assembly line with the goal of minimizing scheduling conflicts (Overloads/Overlaps). 
 
-    \item[Takt] The duration of a clock-cycle in Centiminutes (Cmin). 
+    % \item[Station] 
 
-    \item[Teacher Forcing] A training method where the model is supplied with the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than using its own generated prediction. This stabilizes training and accelerates convergence.
+    \item[Takt] The duration of a clock-cycle, thus the duration of a standard station, in Centiminutes (Cmin). 
+
+    \item[Teacher Forcing] A training method where the model is supplied with the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than using its own generated prediction. 
 
 
 \tableofcontents
@@ -91,12 +91,10 @@ EU funding).
 \section{Background}
 This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. 
 
-The main constraint for this problem is that the assembly line moves synchronously, if a single station exceeds its cycle time, often depicted as an overlap (\ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts.
-
-The methods used in assembly today are strictly rules-based, and due to a large number of rules that have accumulated over the years a lot of these subtleties can prove highly restrictive in search of better solutions. 
+The main constraint for this problem is that the assembly line moves synchronously, if a single station exceeds its cycle time, often depicted as an overlap (\ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts. The methods used in assembly today are based on human intuition and rules that have accumulated over the years a lot of these subtleties can prove highly restrictive in search of better solutions, and hard to teach new operators.
 
 \section{Research Problem}
-Current approaches in practice rely entirely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a time-based approach can help reduce the number of station overloads (\ref{chap:overlap}), and conflicts.
+Current approaches in practice often rely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a more time-based approach could help reduce the number of overloads (\ref{chap:overlap}), and conflicts.
 
 \clearpage 
 \section{Objectives}
@@ -109,7 +107,7 @@ The primary objectives of this thesis are:
 
     \item \textbf{Architectural Adaptation:} To adapt architectures originally designed for Natural Language Processing (Sequence-to-Sequence, Transformer) to the domain of combinatorial optimization. This includes modifying them to handle continuous feature vectors and enforcing permutation constraints via pointer mechanisms.
 
-    \item \textbf{Comparative Evaluation:} To investigate and compare the performance of Recurrent versus Attention-based architectures in resolving the Product Sequencing Problem, specifically measuring their ability to minimize station overlaps, \ref{chap:overlap}.
+    \item \textbf{Comparative Evaluation:} To investigate and compare the performance of Recurrent versus Attention-based architectures in resolving the Product Sequencing Problem, specifically measuring their ability to minimize station overloads, \ref{chap:overlap}.
 
 \end{enumerate}
 
@@ -117,7 +115,7 @@ The primary objectives of this thesis are:
 
 The user interface (UI) will visualize the flow of the assembly line along two axes: one representing stations and one representing clock-cycles. A clock-cycle is defined as the time required for an item to move from one station to the next. In the visualization, items are displayed in a way that reflects the relative duration of processing at each station. In \autoref{fig:assembly}, this is illustrated by stretching items along the timeline to better represent the clock-cycles. Note that a clock-cycle is an arbitrary unit of time and does not correspond to real-world durations. For the purpose of this thesis, one clock-cycle is defined as the time it takes for an arbitrary item $X$ to move from station $S_n$ to station $S_{n+1}$. 
 
-Each entry, whose size represents the time it needs to complete its cycle, may borrow time from a previous or upcoming station, this is referred to as the \textit{"drift area"} (\ref{chap:drift}). Unfortunately, this is where the problems related to the Mixed-Model Assembly Lines start to arise. If time-intensive items are placed consecutively, we will experience an overlap, as the time-allocations will not fit given the constraints of the station and drift areas.
+Each entry, whose size represents the time it needs to complete its cycle, may borrow time from a previous or upcoming station, this is referred to as the \textit{"drift area"} (\ref{chap:drift}). Unfortunately, this is where the problems related to the Mixed-Model Assembly Lines start to arise. If time-intensive items are placed consecutively, we will experience an overload, as the time-allocations will not fit given the constraints of the station and drift areas.
 
 \begin{figure}[ht]
     \centering
@@ -187,38 +185,38 @@ Each entry, whose size represents the time it needs to complete its cycle, may b
     \label{fig:assembly}
 \end{figure}
 
-    Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clock-cycle for each possible item, then we can never keep our items in sync. The main issue is that if we compare the station $S_n$ and $S_m$, then we will see that each station have a different time to finish, then the clock-cycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
-
-Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 200 seconds long in real life, while $S_3$ could be 300. \textit{In this specific case, each station in this specific case are each roughly 7 minutes long, 700 Cmin}, thus we will not run into any major desync problems using clock-cycles on these stations.
+%     Issues in visualizing this way start to appearing when we start to consider that different stations $S_n$ and $S_m$ may take different times to complete. If we then step a clock-cycle for each possible item, then we can never keep our items in sync. The main issue is that if we compare the station $S_n$ and $S_m$, then we will see that each station have a different time to finish, then the clock-cycle system will not be perfect or even realistic as stations with differing times will each finish in different times and thus an item $X$ might make it to the station $S_{n+2}$ from $S_n$ in the same time it takes item $Y$ to make it to $S_{m+1}$ from $S_{m}$.
+%
+% Thus we find the difficulty in displaying it properly in an intuitive graphical user interface. If we wish to display each station as uniform sizes, then we also have to stretch the items to make up for it visually. But doing this we have no intuitive way of knowing that $S_4$ could be 200 seconds long in real life, while $S_3$ could be 300. \textit{In this specific case, each station in this specific case are each roughly 7 minutes long, 700 Cmin}, thus we will not run into any major desync problems using clock-cycles on these stations.
 
 Between each station lies a buffer zone referred to a "drift area". A drift area in this case is a transitional area between any given station $S_n$ and $S_{n+1}$. Both of the stations can borrow time from each other within this area, but only one station may utilize that area at the time. This proves useful to help fit items that take longer on some stations onto the assembly line, but these conveniences which at first glance makes this problem easier are also the source of problems that may occur in production.
 
 As pictured in \autoref{fig:assembly}, $D$ will take a lot of time on $S_4$ and is forced to utilize time from $S_3$ and $S_5$. 
-While this works well in a vacuum, the problems start to arise when $E$ also has to utilize additional time from its neighbouring stations, causing an overlap between $D$ and $E$ at $T+2$ as they both require the use of the drift area. 
+While this works well in a vacuum, the problems start to arise when $E$ also has to utilize additional time from its neighbouring stations, causing an overload between $D$ and $E$ at $T+2$ as they both require the use of the drift area. 
 
-The same problem can be seen at $T$ with $F$ and $G$ as both items need to borrow time from the stations before and after. Thus we run into an overlap, as the items \textit{cannot} fit.
+The same problem can be seen at $T$ with $F$ and $G$ as both items need to borrow time from the stations before and after. Thus we run into an overload, as the items \textit{cannot} fit.
 
-It is important to note that on $T$, $E$ does not utilize the drift area which results in it sitting flush with $F$ on the timeline, this may look good on paper but can result in overlap in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
+It is important to note that on $T$, $E$ does not utilize the drift area which results in it sitting flush with $F$ on the timeline, this may look good on paper but can result in overload in practice due to the human workers at the assembly line occasionally taking a bit longer than presumed. This can be resolved by borrowing some time from $S_2$ and moving $E$ into the drift area. 
 
 The same issue occurs at $T+1$ where $C$ and $D$ just \textit{barely} get enough time, but it cannot get resolved by simply moving $D$ forward, as $D$ on $T+2$ will require all of the time it can get on $S_4$. 
 
 \section{Jump-in and Jump-out}
-In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it cannot fully proceed on the assembly line. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}. \cite{ref6}
+In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it shouldn't enter the assembly line at all. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}. \cite{ref6}
 
-A related challenge occurs when the missing components finally arrive. At this point, the product components occupy space on the assembly station. Ideally, jumped out product should be reintegrated into the line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
+A related challenge occurs when the missing components finally arrive, since the product components occupy space on the assembly station. Ideally, jumped out product should be reintegrated into the assembly line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
 
 From an algorithmic perspective, a \emph{jump-in} can be treated as an $O(n)$ problem: one needs only to inspect the $n$ positions in a sequence of length $n$ to determine the best insertion point in the upcoming batch. Implemented correctly, a jump-in could occur as soon as the following batch. Nevertheless, depending on operational constraints, it may not be feasible in every batch.
 
-Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the line by one clock cycle ($T$), potentially cause overloads (\ref{chap:overlap}). Alternatively, the gap could be left in place, which avoids overloading but will result in lower throughput. \cite{ref6}
+Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the sequence by one clock cycle ($T$), potentially causing overloads (\ref{chap:overlap}). Alternatively, the gap could be left in place, which avoids overloading but will result in lower throughput. \cite{ref6}
 
 \clearpage %blir fult annars
 \section{Defining Drift Area}
 \label{chap:drift}
-The Drift Area is visualized in this thesis as a gray zone intersecting two neighbouring stations, it is also the source of our scheduling conflicts. The Drift Area allows for a lot of flexibility due to the fact that \textit{instead} of slowing down the assembly line to $1100$ Cmin and decreasing the production output by roughly $40\%$, the assembly line instead moves at a pace of $700$ Cmin per station (Standard Takt), with $200 $Cmin available as \textit{drift} on both sides.
+The Drift Area is visualized in this thesis as a gray zone intersecting two neighbouring stations, it is also the source of our scheduling conflicts. The Drift Area allows for a lot of flexibility due to the fact that \textit{instead} of slowing down the assembly line to $1100$ Cmin and decreasing the production output by roughly $40\%$, the assembly line instead moves at a pace of $700$ Cmin per station \ref{tab:genconsts}, with $200 $Cmin available as \textit{drift} on both sides.
 
 For a station $S_n$ (where $Takt = 700$ Cmin), we can use up to $200$ Cmin from $S_{n-1}$ and up to $200$ Cmin from $S_{n+1}$. This is referred to in this thesis as \textbf{Borrowing}. Borrowing this way will give us up to a total time of $1100$ Cmin for any given task, with the caveat of $S_{n-1}$ and $S_{n+1}$ being reduced to a minimum of $500$ Cmin.
 
-It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, then work cannot begin on $n+1$ until it has finished, and while the drift area between two stations is often illustrated as two cojoined buffer zones, $D_s$ should always be considered an extention of $S$, even though it may be seen within $S+1$ or $S-1$.
+It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, then work cannot begin on $n+1$ until it has finished, and while the drift area between two stations is often illustrated as two cojoined zones, $D_s$ should always be considered an extention of $S$, even though it may be seen within $S+1$ or $S-1$.
 
 
 \begin{figure}[htbp]
@@ -367,7 +365,7 @@ Overlaps are how station overloads are visualized in this thesis, as we follow t
   }
 
 \end{tikzpicture}
-\caption{An example of two allocations, where there is not enough room as both require borrowing, causing an overlap.}
+\caption{An example of two allocations, where there is not enough room as both require borrowing, causing an overload.}
 \end{minipage}
 
 \end{figure}
@@ -382,7 +380,7 @@ In recent years, Deep Reinforcement Learning (DRL) has become a dominant approac
 
 For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Algorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load. \cite{ref10} 
 
-However, reinforcement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overlaps that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Supervised Learning was chosen instead.
+However, reinforcement learning requires trying and failing repeatedly in order to learn, and applying such trial and error Reinforcement Learning methods to a Mixed-Model Assembly Line (MMAL), especially in a production environment, will pose significant risks. In a cloud environment, a scheduling error typically results in a slowdown in the form of increased latency or reduced throughput. In contrast, a scheduling error in a physical MMAL situation often results in scheduling overloads that force the entire assembly line to halt in order for each station to be able to finish in time. Given these higher stakes, the exploratory nature of reinforcement learning agents may be prohibitively costly compared to imitating proven human strategies, hence the use of Deep Supervised Learning was chosen instead.
 
 While DRL is effective for dynamic environments where rules change frequently, it presents significant implementation challenges. It requires the construction of a high-fidelity simulation environment and the careful engineering of state and action spaces. Furthermore, the "black box" nature of the reward signal makes it difficult to capture the nuanced, unwritten knowledge of the human servicemen, which is the primary objective of this thesis.
 
@@ -453,10 +451,10 @@ For data generation the following constants are used:
         Objects    & $100$     & Total number of objects in the testing sequence. \\
         Stations   & $39$      & Total number of stations. \\
         Takt       & $700$     & The duration of a cycle ($Cmin$). \\
-        Drift      & $200$     & The duration of the drift area ($Cmin$) \\
-        Gap        & $10$      & Time-buffer ($Cmin$) between generated objects. \\
-        min\_size  & $100$     & Smallest possible Object ($Cmin$). \\
-        max\_size  & $Takt + 2 \times Drift$ & Largest possible Object ($Cmin$). \\
+        Drift      & $200$     & The duration of one drift area for $S$ ($Cmin$) \\
+        Gap        & $10$      & Minimum anount of time ($Cmin$) between generated objects. \\
+        min\_size  & $100$     & Shortest possible duration of an object ($Cmin$). \\
+        max\_size  & $Takt + 2 \times Drift$ & Largest possible duration of an object ($Cmin$). \\
         Multiplier & $5000$    & Constant value to multiply \textit{Objects} with, used for Training.\\
         \bottomrule
     \end{tabular}
@@ -473,9 +471,9 @@ For the purpose of training optimization, the raw information is abstracted into
 By utilizing these values, we can train a model to prioritize time-based decision-making over rigid rule-based systems. It is important to note that while the model operates without explicit constraints, the use of a sufficiently large dataset derived from expert tacit knowledge ensures that it implicitly adheres to fundamental ground rules, albeit with greater flexibility.
 
 \subsection{Offset Calculation and Centering}
-The positioning of an object within a station is determined by its \textit{offset} relative to the \textbf{Takt} start ($0$ locally). The script employs a dynamic centering logic that positions tasks within the remaining available capacity of the standard Takt window. This approach balances the empty space (or buffer) on either side of the allocation, adapting to the finish time of the preceding task.
+The positioning of an object within a station is determined by its \textit{offset} relative to the \textbf{Takt} start ($0$ locally). The script employs a dynamic centering logic that positions tasks within the remaining available capacity of the standard Takt window. This approach balances the empty space on either side of the allocation, adapting to the finish time of the preceding task.
 
-To determine the position, the script first calculates the local start time, $t_{start}$, which corresponds to the completion of the previous allocation relative to the current Takt. The remaining buffer, $B$, is calculated as the difference between the standard Takt duration $T$ and the occupied time, clamped to zero to ensure non-negative spacing:
+To determine the position, the script first calculates the local start time, $t_{start}$, which corresponds to the completion of the previous allocation relative to the current Takt. The remaining time $B$, is calculated as the difference between the standard Takt duration $T$ and the occupied time, clamped to zero to ensure non-negative spacing:
 
 \begin{equation}
     B = \max(0, T - t_{start} - S)
@@ -570,14 +568,14 @@ Mathematically, the earliest valid start time ($t_{start}$) for the new allocati
 This logic ensures that the generated schedule is causally valid, no object effectively "teleports" between stations, and no two objects overlap on a single station.
 
 \subsubsection*{Context-Aware Scaling}
-The dimensions of the tasks are also generated dependently. While duration in each station for each object is chosen stochastically, the actual assigned size ($S$) of the duration is clamped by the remaining available time in the Takt + Drift window. The generator calculates the available space between the calculated $t_{start}$ and the maximum drift boundary. If the random size exceeds this space, it is truncated to fit (within the constraints of $min\_size$, \ref{tab:genconsts})
+The dimensions of the tasks are also generated dependently. While duration in each station for each object is chosen stochastically, the actual assigned size ($S$) of the duration is clamped by the remaining available time in the Takt + Drift window. The generator calculates the available space between the calculated $t_{start}$ and the maximum drift boundary. If the size exceeds this space, it is truncated to fit (within the constraints of $min\_size$, \ref{tab:genconsts})
 
 \begin{equation}
     min\_size \leq S \leq max\_size 
     \label{eq:}
 \end{equation}
 
-When training, the model is fed the sorted list, while testing is fed never seen before shuffled data. This process results in a synthetic dataset where every input sequence has a perfectly matching output sequence that is guaranteed to be solvable, providing a robust target for supervised learning.
+When training, the model is fed the sorted list, the solved puzzle, then while testing the model, it is fed never seen before data which has been shuffled beforehand. This process results in a synthetic dataset where every input sequence has a perfectly matching output sequence that is guaranteed to be solvable, providing a robust target for supervised learning.
 
 \begin{figure}[H] 
 \centering
@@ -915,7 +913,7 @@ This POST endpoint will count the number of \textbf{overlaps} on a given sequenc
 
 \chapter{Experiments and results}
 \section{Task Performance}
-Performance is measured by how well the model can take an input with overlapping data and rearrange the tasks to minimize overlaps. The reduction metric is defined at \ref{sec:eval}.
+Performance is measured by how well the model can take an input with overlapping data and rearrange the tasks to minimize overloads. The reduction metric is defined at \ref{sec:eval}.
 
 Although the operational constraints of the target problem typically limit sequences to batches of roughly 100 objects, the following results also evaluate the model's scalability beyond this range.
 
@@ -1176,17 +1174,17 @@ where $O_{source}$ is the total number of overlaps of the shuffled input sequenc
 \chapter{Discussion}
 \section{Interpretation of Results}
 
-The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an overlap reduction of 93\% on unseen test data.
+The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an overload reduction of 93\% at most on unseen test data, with an average of about 90\%.
 
-While this result indicates strong generalization to new sequences, the exceptionally high performance warrants critical scrutiny regarding the nature of the synthetic dataset. Since the data is generated via a constructive "solved puzzle" heuristic (\ref{sub:datagen}), the resulting tasks contain inherent "fingerprints" of the generation logic, specifically the deterministic \textit{Gap} and \textit{Centering} calculations.
+While this result indicates strong generalization to new sequences, the exceptionally high performance warrants scepticism regarding the nature of the synthetic dataset. Since the data is generated via a constructive "solved puzzle" heuristic (\ref{sub:datagen}), the resulting tasks contain inherent "fingerprints" of the generation logic, specifically the deterministic \textit{Gap} and \textit{Centering} calculations, these perfections will not be present in real-life data.
 
-Even though the input sequences are freshly generated and then shuffled during testing, the relationships between compatible tasks remain encoded in their feature vectors. It is highly probable that the Transformer, utilizing its global self-attention mechanism, has successfully "reverse-engineered" these generative artifacts. Rather than learning abstract scheduling principles (e.g., "how to manage generic load"), the model has likely learned to identify the specific "jigsaw" edges created by the constructive algorithm, allowing it to reconstruct the original ground truth with high fidelity.
+Even though the input sequences are freshly generated and then shuffled during testing, the relationships between compatible tasks remain encoded in their feature vectors. It is highly probable that the Transformer, utilizing its global self-attention mechanism, has successfully "reverse-engineered" these generative artifacts. Rather than learning abstract scheduling principles, the model has likely learned to identify the specific "jigsaw" edges created by the constructive algorithm, allowing it to reconstruct the original ground truth with high fidelity.
 
-This hypothesis is supported by the performance gap between the Transformer (93\%) and the Recurrent models (~75\%). The Transformer can inspect the entire shuffled "pool" of tasks simultaneously to find optimal pairings, whereas the RNNs must attempt to reconstruct the puzzle linearly, making it harder to spot these global, puzzle-piece connections. %fishy
+This hypothesis is supported by the performance gap between the Transformer (93\%), and the RNN-Based (Seq2Seq \& Pointer Network) models (~75\%). The Transformer can inspect the entire shuffled "pool" of tasks simultaneously to find optimal pairings, whereas the RNNs must attempt to reconstruct the puzzle linearly, making it harder to spot these global, puzzle piece connections. %fishy
 
 \section{Limitations}
 \subsection{Testing and Training Data}
-Due to the limited size and inconsistency of available production data, this study relies on generated synthetic data (\ref{sec:dataset}). Although this dataset was rigorously designed to adhere to operational constraints, the absence of real-world validation, and edge-cases not accounted for within sequencing, limits our ability to empirically confirm the models' performance in a live production environment.
+Due to the limited size and inconsistency of available production data, this study relies on generated synthetic data (\ref{sec:dataset}). Although this dataset was designed to adhere to operational constraints, the absence of real-world validation, and edge-cases not accounted for within sequencing, limits our ability to confirm with full certainty that the models' performance in a live production environment will produce feasible results at all.
 
 \subsection{Hardware and Resource Limitations}
 \label{sub:limit}
@@ -1196,7 +1194,7 @@ To maintain training stability, it was necessary to reduce the batch size. Howev
 
 \section{Future Work}
 
-Future iterations of this research should prioritize bridging the gap between synthetic success and real-world application. While the current model demonstrates strong heuristic learning, scaling the training data via better computing hardware could help resolve the remaining overlaps. Specifically, optimizing the data serialization pipeline would enable the processing of millions of sequences, potentially allowing the Transformer to generalize from "strong approximation" to "perfect solution."
+Future iterations of this research should prioritize bridging the gap between synthetic success and real-world application. While the current model demonstrates strong heuristic learning, scaling the training data via better computing hardware could help resolve the remaining overloads. Specifically, optimizing the data serialization pipeline would enable the processing of millions of sequences, potentially allowing the Transformer to generalize from "strong approximation" to "perfect solution."
 
 Additionally, it would be valuable to investigate the feasibility of Online Learning paradigms. Implementing a Human-in-the-Loop (HITL) strategy would allow the model to adapt in real-time to operator overrides. This would effectively capture the true "knowledge" of the assembly line reasoning that cannot be fully encapsulated in a synthetic training set.
 
@@ -1230,3 +1228,5 @@ Additionally, it would be valuable to investigate the feasibility of Online Lear
 
 \end{thebibliography}
 \end{document}
+
+%TODO: cycle time = takt?
