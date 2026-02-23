@@ -52,7 +52,7 @@ Funding: Vinnova grant 2023-00970 (EUREKA ITEA4 ArtWork), Vinnova grant 2023-004
 funding), and KDT JU grant 2023-000450 (Arrowhead fPVN,
 EU funding).
 
-\chapter*{Definitions}
+% \chapter*{Definitions}
 
 % \begin{description}
 %     \item[Allocation] A specific instance of a task being assigned to a station. It is defined physically by the dimensions (duration) of the object and temporally by its placement within the station's available time window.
@@ -397,7 +397,7 @@ The Mixed-Model Assembly Line (MMAL) problem is an optimization problem, formall
 
 In recent years, Deep Reinforcement Learning (DRL) has become a dominant approach for solving dynamic scheduling problems. Unlike supervised methods, DRL agents learn through trial-and-error interaction with a simulation environment, aiming to maximize a cumulative reward signal \cite{ref19, ref20}.
 
-For example, Chen et al. proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Algorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load \cite{ref10}.
+For example, Chen et al. (2022) proposed an Adaptive Deep Q-Network, which builds on the Q-Learning Algorithm in order to address scheduling in Cloud Manufacturing environments characterized by stochastic task arrivals. Their approach utilizes a resizable network structure to adapt to changing machine availability and employs a complex reward mechanism to balance multiple objectives, such as minimizing work time, and optimizing machine load \cite{ref10}.
 
 A primary constraint of this research is the restriction to synthetic data, without access to a live production environment or a verified feedback loop. Reinforcement Learning (RL) relies on the ability to execute actions and receive immediate rewards. Without an interactive environment or a validated simulator to provide this feedback, training an RL agent is infeasible. Therefore, this study approaches the problem through Supervised Learning. This paradigm leverages the available "solved" instances to train a model to mimic expert sequencing patterns, circumventing the need for the interactive state-space exploration required by RL agents.
 
@@ -405,7 +405,7 @@ Furthermore, while DRL is effective for dynamic environments where rules change 
 
 Current manual approaches rely heavily on knowledge accumulated through experience that is difficult to articulate as explicit rules, especially if rules have accumulated over time. This thesis proposes capturing this knowledge using Supervised Learning, a paradigm formally known in this context as Imitation Learning \cite{ref11}. 
 
-A precedent for this methodology is established by Dupuis et al. \cite{ref2}, who successfully trained a Sequence-to-Sequence (Seq2Seq) model using teacher-forcing to generate production schedules.  More recently, however, attention-based architectures have shown promise in this domain.  Youssef et al. \cite{ref14} applied Transformers to autonomous task scheduling, while Giannoulis et al. \cite{ref13} demonstrated their efficacy in solving combinatorial problems through trial and error.
+A precedent for this methodology is established by Dupuis et al. (2023) \cite{ref2}, who successfully trained a Sequence-to-Sequence (Seq2Seq) model using teacher-forcing to generate production schedules.  More recently, however, attention-based architectures have shown promise in this domain.  Youssef et al. (2025) \cite{ref14} applied Transformers to autonomous task scheduling, while Giannoulis et al. (2025) \cite{ref13} demonstrated their efficacy in solving combinatorial problems through trial and error.
 
 \section{Recurrent Architectures}
 \label{sec:recurrent_arch}
@@ -481,8 +481,8 @@ For the purpose of training optimization, the raw information is abstracted into
 
 \begin{itemize}
     \item \textbf{Object ID} (\texttt{object}): An integer representing the unique identifier of the item.
-    \item \textbf{Station Data} (\texttt{data}): A mapping of station keys ($s_1, \dots, s_{35}$) to their respective time requirement values.
-    \item \textbf{Station Offsets} (\texttt{offsets}): A mapping of station keys to their relative offset values.
+    \item \textbf{Station Data} (\texttt{data}): A mapping of station keys ($s_1, \dots, s_{39}$) to their respective time requirement values.
+    \item \textbf{Station Offsets} (\texttt{offsets}): A mapping of station keys ($s_1, \dots, s_{39}$) to their relative offset values.
 \end{itemize}
 
 By utilizing these values, we can train a model to prioritize time-based decision-making over rigid rule-based systems. It is important to note that while the model operates without explicit constraints, the use of a sufficiently large dataset derived from expert tacit knowledge ensures that it implicitly adheres to fundamental ground rules, albeit with greater flexibility.
@@ -745,20 +745,20 @@ The models in this thesis are implemented using PyTorch.
 
 \subsection{The Transformer Model}
 \label{sec:trans}
-The implemented model adapts the standard Transformer architecture originally proposed by Vaswani et al. \cite{ref5} to handle continuous combinatorial data. Unlike standard NLP models that process discrete tokens, this implementation operates on continuous feature vectors and utilizes a pointer mechanism for output generation.
+The implemented model adapts the standard Transformer architecture originally proposed by Vaswani et al. (2017) \cite{ref5} to handle continuous combinatorial data. Unlike standard NLP models that process discrete tokens, this implementation operates on continuous feature vectors and utilizes a pointer mechanism for output generation.
 
 \subsubsection{Continuous Input Embeddings}
 Standard Transformers typically utilize a lookup table to map discrete vocabulary indices to dense vectors. Since the input data for this problem consists of continuous immutable features (station order, station times, dimensions), the embedding layer is replaced by a learnable linear projection. 
 
 \subsubsection{Positional Encoding}
-As the Transformer architecture contains no recurrence or convolution, it can thus not distinguish the order of the input objects, essentially treating it as an unordered set. To address this, a fixed sinusoidal Positional Encoding is added to the input embeddings. This provides each element with a unique geometric signature, allowing the model to determine the relative positions of objects within the sequence. The encodings are calculated as \cite{ref5}:
+As the Transformer architecture contains no recurrence or convolution, it is order agnostic, it can thus not distinguish the order of the input objects, essentially treating it as an unordered set. To address this, a fixed Positional Encoding is added to the input embeddings. This provides each element with a unique geometric signature, allowing the model to determine the relative positions of objects within the sequence. The encodings are calculated as \cite{ref5}:
 \begin{equation}
     PE_{(pos, 2i)} = \sin(pos / 10000^{2i/d_{model}})
 \end{equation}
 \begin{equation}
     PE_{(pos, 2i+1)} = \cos(pos / 10000^{2i/d_{model}})
 \end{equation}
-This mechanism allows the model to distinguish between identical tasks placed at different positions in the sequence.
+This mechanism allows the model to distinguish between identical tasks placed at different positions in the sequence, essentially giving each task a fingerprint based on location.
 
 \subsubsection{Layer Normalization and Pre-Norm Formulation}
 The system employs Layer Normalization to stabilize training \cite{ref1}, specifically adopting "Pre-Normalization" where the input is normalized \textit{before} passing it to the sub-layer, rather than after. This configuration, implemented in the \texttt{ResidualConnection} module, allows gradients to flow more directly through the network, generally improving convergence in deeper models.
@@ -786,7 +786,7 @@ This implementation of the Transformer replaces the vocabulary projection layers
 The implemented model is a standard Sequence-To-Sequence model with modifications clarified in \ref{chap:workarounds}.
 
 \subsubsection{Continuous Input Encoder}
-The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly  \cite{ref4, ref8}.
+The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly  \cite{ref8}.
 
 \subsubsection{Attention Mechanism}
 To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
@@ -864,6 +864,7 @@ The feature extraction is performed by selecting specific keys ($s_1 \dots s_N$)
 \begin{equation}
     x_{norm} = \frac{x_{raw}}{1000.0}
 \end{equation}
+
 Due to memory constraints, the sequences exceeding the maximum defined length are chunked into smaller subsequences to manage memory constraints effectively. (\ref{sub:limit})
 
 \subsection{Shuffled Task Generation}
@@ -931,7 +932,7 @@ This POST endpoint will count the number of \textbf{overlaps} on a given sequenc
 \chapter{Experiments and Results}
 
 \section{Task Performance}
-Performance is measured by how well the model can take an input with overlapping data and rearrange the tasks to minimize overloads. Although the operational constraints of the target problem typically limit sequences to batches of roughly 100 objects, the following results also evaluate the model's scalability beyond this range.
+Performance is measured by how well the model can take an input with overlapping data and rearrange the tasks to minimize overloads. Although the operational constraints of the target problem typically limit sequences to batches of roughly 100 objects or less. The following results also evaluate the model's scalability beyond this range.
 
 \subsection{Evaluation Metrics}
 \label{sec:eval}

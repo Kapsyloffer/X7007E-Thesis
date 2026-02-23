@@ -5,6 +5,6 @@ DISAGREE > Beskrivningar av modellerna, "svepande". Utveckla lite mer.
 DONE > 1.6, S_n och S inkonsekventa.
 DONE > 5.3 kan flyttas till 5.1
 DONE > Improvement och Reduction, Inkonsekvent.
-> (OPTIONAL) Hänvisa till figurer och tabeller i löpande text där relevant.
+EH > (OPTIONAL) Hänvisa till figurer och tabeller i löpande text där relevant.
 DONE > Refersenser har hamnat efter punkten snarare än innan. 
 DONE > Förklara Product Sequencing mer utförligt, förlita mindre på [6]
