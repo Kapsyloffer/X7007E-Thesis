@@ -93,9 +93,12 @@ EU funding).
 
 \chapter{Introduction}
 \section{Background}
-This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. Traditionally, product sequences are determined manually by management staff, relying primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. 
+This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. 
+A mixed-model assembly line is designed to produce various models or variants of a product on the same continuous line without setup changes between models. The core of the problem lies in the fact that different items on the assembly line may take different amounts of processing time to be completed at a given station. Thus, scheduling conflicts and work overloads may arise from two or more demanding objects being consecutively sequenced.
 
-The main constraint for this problem is that the assembly line moves synchronously, if a single station exceeds its cycle time, often depicted as an overlap (\ref{chap:overlap}), then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts. The methods used in assembly today are based on human intuition and rules that have accumulated over the years. These subtleties can prove highly restrictive in search of better solutions, and hard to teach new operators.
+Traditionally, product sequences are determined manually by management staff using a rule-based framework. However, if a sequence needs to be adjusted, the process relies primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. The methods used in assembly today are based on human intuition and rules that have accumulated over the years. These subtleties can prove highly restrictive in search of better solutions, and hard to teach new operators.
+
+The main constraint for this problem is that the assembly line moves synchronously. If a single station exceeds its cycle time, then the \textit{entire} assembly line halts. Thus, the goal of this thesis is to minimize the number of production halts.
 
 \section{Research Problem}
 Current approaches in practice often rely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a more time-based approach could help reduce the number of overloads (\ref{chap:overlap}), and conflicts.
@@ -109,7 +112,7 @@ The primary objectives of this thesis are:
 \begin{enumerate}
     \item \textbf{Deep Learning Framework Design:} To design a supervised learning framework capable of emulating expert scheduling logic. Due to the scarcity of consistent historical records, this involves training on high-fidelity synthetic data generated via a constructive "solved puzzle" heuristic to represent valid, collision-free ground truths, \ref{sub:datagen}.
 
-    \item \textbf{Architectural Adaptation:} To adapt architectures originally designed for Natural Language Processing (Sequence-to-Sequence, Transformer) to the domain of combinatorial optimization. This includes modifying them to handle continuous feature vectors and enforcing permutation constraints via pointer mechanisms.
+    \item \textbf{Architectural Adaptation:} To adapt architectures originally designed for Natural Language Processing (Sequence-to-Sequence, Transformer) to the domain of combinatorial optimization. This includes modifying them to handle continuous feature vectors and enforcing permutation constraints via pointer mechanisms, \ref{chap:workarounds}.
 
     \item \textbf{Comparative Evaluation:} To investigate and compare the performance of Recurrent versus Attention-based architectures in resolving the Product Sequencing Problem, specifically measuring their ability to minimize station overloads, \ref{chap:overlap}.
 
@@ -196,22 +199,44 @@ A similar conflict appears at $T$ with items $F$ and $G$. Both items require bor
 
 
 \section{Jump-in and Jump-out}
-In modern production, product sequences are typically finalized and frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary. When a product is missing critical components and cannot be built, it shouldn't enter the assembly line at all. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}. \cite{ref6}
+In modern production, product sequences are typically finalized and staged relying on a rules-based framework, then the sequences frozen in batches before entering the assembly line. Ideally, the order will remain unchanged, but last-minute adjustments may occasionally be necessary, \textbf{this} is the part where the tacit knowledge is essential. 
 
-A related challenge occurs when the missing components finally arrive, since the product components occupy space on the assembly station. Ideally, jumped out product should be reintegrated into the assembly line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later. \cite{ref6}
+When a product is missing critical components and cannot be built, it shouldn't enter the assembly line at all. In such cases, the product must be temporarily removed from the sequence and held until all parts are available, a process referred to as \emph{jump-out}\cite{ref6}.
 
-From an algorithmic perspective, a \emph{jump-in} can be treated as an $O(n)$ problem: one needs only to inspect the $n$ positions in a sequence of length $n$ to determine the best insertion point in the upcoming batch. Implemented correctly, a jump-in could occur as soon as the following batch. Nevertheless, depending on operational constraints, it may not be feasible in every batch.
+A related challenge occurs when the missing components finally arrive, since the product components occupy space on the assembly station. Ideally, jumped out product should be reintegrated into the assembly line as soon as possible, preferably before the next batch begins production. Currently, however, reintegration is delayed, and the suspended product may not re-enter the assembly line until several batches later.
 
-Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the sequence by one clock cycle ($T$), potentially causing overloads (\ref{chap:overlap}). Alternatively, the gap could be left in place, which avoids overloading but will result in lower throughput. \cite{ref6}
+The challenge in this case lies in rule-based constrictions. For example, if the sequence is built upon the rules "\textbf{1. Object A requires at least two other objects before another Object A to properly fit. 2. Object D cannot be placed next to object B.}"
+
+\[
+    S = [A, B, B, A, C, D, D, A, C, B, A, D] \]\[ \text{Jump-in} = [A]
+\]
+
+Where does $A$ fit? 
+
+From an algorithmic perspective, if we disregard the rules, a \emph{jump-in} can be treated as an $O(n \times m)$ problem: one needs only to inspect the $n$ positions in a sequence of length $n$ to determine the best insertion point in the upcoming batch, and then adjustments on the $m$ remaining objects must be done. Implemented correctly, a jump-in could occur as soon as the following batch. Nevertheless, depending on operational constraints, it may not be feasible in every batch. 
+
+Jump-out, on the other hand, can be considered an $O(1)$ problem, though it presents additional practical challenges. Removing a product from the assembly line creates a gap that must be managed. This gap may require shifting a portion of the sequence by one clock cycle ($T$), potentially causing overloads (\ref{chap:overlap}). Alternatively, the gap could be left in place, which avoids overloading but will result in lower throughput \cite{ref6}.
+
+If we return to the rule-based example,
+
+\[
+    [A, B, B, A, C, D, D, A, C, B, A, D] \longrightarrow [A, B, \times, A, C, D, D, A, C, B, A, D]
+\]\[
+    \text{Jump-out} = [B]
+\]
+
+
+In the worst case several products may need to be resequenced in order for a solution to be found, rather than a single insertion.
+
 
 \clearpage %blir fult annars
 \section{Defining Drift Area}
 \label{chap:drift}
-The Drift Area is visualized in this thesis as a gray zone intersecting two neighbouring stations, it is also the source of our scheduling conflicts. The Drift Area allows for a lot of flexibility due to the fact that \textit{instead} of slowing down the assembly line to $1100$ Cmin and decreasing the production output by roughly $40\%$, the assembly line instead moves at a pace of $700$ Cmin per station \ref{tab:genconsts}, with $200 $Cmin available as \textit{drift} on both sides.
+The Drift Area is visualized in this thesis as a gray zone intersecting two neighbouring stations, it is also the source of our scheduling conflicts. The Drift Area allows for a lot of flexibility due to the fact that \textit{instead} of slowing down the assembly line to $1100$ Cmin and decreasing the production output by roughly $40\%$, the assembly line instead moves at a pace of $700$ Cmin per station \ref{tab:genconsts}, with $200$ Cmin available as \textit{drift} on both sides.
 
-For a station $S_n$ (where $Takt = 700$ Cmin), we can use up to $200$ Cmin from $S_{n-1}$ and up to $200$ Cmin from $S_{n+1}$. This is referred to in this thesis as \textbf{Borrowing}. Borrowing this way will give us up to a total time of $1100$ Cmin for any given task, with the caveat of $S_{n-1}$ and $S_{n+1}$ being reduced to a minimum of $500$ Cmin.
+For a station $S_n$ (where $Takt = 700$ Cmin), we can use up to $200$ Cmin from $S_{n-1}$ and up to $200$ Cmin from $S_{n+1}$. This is referred to in this thesis as \textbf{Borrowing}. Borrowing this way will give us up to a total time of $1100$ Cmin for any given task $T_n$, with the caveat of $S_{n-1}$ and $S_{n+1}$ being reduced to a minimum of $500$ Cmin.
 
-It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, then work cannot begin on $n+1$ until it has finished, and while the drift area between two stations is often illustrated as two cojoined zones, $D_s$ should always be considered an extension of $S$, even though it may be seen within $S+1$ or $S-1$.
+It is also important to note that while an object $T_n$ is borrowing from $S_{n+1}$, work cannot begin on the subsequent object $T_{n+1}$ until the borrowing has finished. Furthermore, while the drift area between two stations is often illustrated as two conjoined zones, the drift area of a specific station ($D_{S_n}$) should always be considered an extension of $S_n$, even though it may physically overlap with $S_{n+1}$ or $S_{n-1}$.
 
 
 \begin{figure}[htbp]
@@ -263,16 +288,16 @@ It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, t
 \begin{tikzpicture}[>=Latex, font=\large, scale=0.5, transform shape]
   \fill[gray!20] (0 - 0.75, -1) rectangle (0, 2.1);
   \fill[gray!20] (5 + 0.75, -1) rectangle (5, 2.1);
-    \draw[|-|] (5, -1.25) -- (5.75, -1.25) node[midway, below] {$D_{S}$};
-    \draw[|-|] (0, -1.75) -- (5, -1.75) node[midway, below] {${S}$};
-    \draw[|-|] (0, -1.25) -- (-0.75, -1.25) node[midway, below] {$D_{S}$};
+    \draw[|-|] (5, -1.25) -- (5.75, -1.25) node[midway, below] {$D_{S_n}$};
+    \draw[|-|] (0.1, -1.25) -- (4.9, -1.25) node[midway, below] {${S_n}$};
+    \draw[|-|] (0, -1.25) -- (-0.75, -1.25) node[midway, below] {$D_{S_n}$};
   
   \foreach \x/\label in {0/{$T$}, 5/{$T+1$}} {
     \draw[very thick] (\x, -1) -- (\x, 2.1);
     \node[above, black] at (\x, 2.1) {\bfseries \label}; 
   }
 \end{tikzpicture}
-    \caption{A station on it's own can be depicted with one drift area at the start, and at the end of it's allocated time.}
+    \caption{A station on its own can be depicted with one drift area at the start, and at the end of its allocated time.}
 \end{minipage}
 \hfill
 \begin{minipage}{0.48\textwidth}
@@ -281,26 +306,26 @@ It's also important to note that while Object $n$ is borrowing from $S_{n+1}$, t
   \foreach \x in {0, 5, 10} {
     \fill[gray!20] (\x - 0.75, -1) rectangle (\x + 0.75, 2.1);
   }
-    \draw[-|] (-1.5, 0) -- (-0.1, 0) node[midway, below] {$S-2$};
+    \draw[-|] (-1.5, 0) -- (-0.1, 0) node[midway, below] {$S_{n-2}$};
 
-    \draw[|-|] (0.1, 0) -- (4.9, 0) node[midway, below] {$S-1$};
+    \draw[|-|] (0.1, 0) -- (4.9, 0) node[midway, below] {$S_{n-1}$};
 
-    \draw[|-|] (5.1, 0) -- (9.9, 0) node[midway, below] {$S$};
-    \draw[|-] (10.1, 0) -- (11.5, 0) node[midway, below] {$S+1$};
+    \draw[|-|] (5.1, 0) -- (9.9, 0) node[midway, below] {$S_n$};
+    \draw[|-] (10.1, 0) -- (11.5, 0) node[midway, below] {$S_{n+1}$};
 
-    \draw[|-|] (-0.75, -2.5) -- (0, -2.5) node[midway, below] {$D_{S-1}$};
-    \draw[|-|] (0.75, -1.5) -- (0, -1.5) node[midway, below] {$D_{S-2}$};
-    \draw[|-|] (4.25, -1.5) -- (5, -1.5) node[midway, below] {$D_{S}$};
-    \draw[|-|] (5, -2.5) -- (5.75, -2.5) node[midway, below] {$D_{S-1}$};
-    \draw[|-|] (10, -1.5) -- (10.8, -1.5) node[midway, below] {$D_{S}$};
-    \draw[|-|] (9.25, -2.5) -- (10, -2.5) node[midway, below] {$D_{S+1}$};
+    \draw[|-|] (-0.75, -2.5) -- (0, -2.5) node[midway, below] {$D_{S_{n-1}}$};
+    \draw[|-|] (0.75, -1.5) -- (0, -1.5) node[midway, below] {$D_{S_{n-2}}$};
+    \draw[|-|] (4.25, -1.5) -- (5, -1.5) node[midway, below] {$D_{S_n}$};
+    \draw[|-|] (5, -2.5) -- (5.75, -2.5) node[midway, below] {$D_{S_{n-1}}$};
+    \draw[|-|] (10, -1.5) -- (10.8, -1.5) node[midway, below] {$D_{S_n}$};
+    \draw[|-|] (9.25, -2.5) -- (10, -2.5) node[midway, below] {$D_{S_{n+1}}$};
   
   \foreach \x/\label in {0/{$T-1$}, 5/{$T$}, 10/{$T+1$}} {
     \draw[very thick] (\x, -1) -- (\x, 2.1);
     \node[above, black] at (\x, 2.1) {\bfseries \label}; 
   }
 \end{tikzpicture}
-    \caption{While the stations are concatenated, the drift areas will be displayed as one unit, but $Sn$ will borrow \textit{only} if it uses $D_{Sn}$.}
+    \caption{While the stations are concatenated, the drift areas will be displayed as one unit, but $S_n$ will borrow \textit{only} if it uses $D_{S_n}$.}
 \end{minipage}
 \end{figure}
 
@@ -739,13 +764,13 @@ This mechanism allows the model to distinguish between identical tasks placed at
 The system employs Layer Normalization to stabilize training \cite{ref1}, specifically adopting "Pre-Normalization" where the input is normalized \textit{before} passing it to the sub-layer, rather than after. This configuration, implemented in the \texttt{ResidualConnection} module, allows gradients to flow more directly through the network, generally improving convergence in deeper models.
 
 \subsubsection{Multi-Head Attention}
-The core mechanism of the model is Multi-Head Attention (MHA), which allows the model to jointly attend to information from different representation subspaces. The implementation utilizes $h$ parallel heads. For each head, the input is projected into Query, Key, and Value ($Q$, $K$, $V$) matrices. The attention scores are computed using Scaled Dot-Product Attention: \cite{ref5}
+The core mechanism of the model is Multi-Head Attention (MHA), which allows the model to jointly attend to information from different representation subspaces. The implementation utilizes $h$ parallel heads. For each head, the input is projected into Query, Key, and Value ($Q$, $K$, $V$) matrices. The attention scores are computed using Scaled Dot-Product Attention \cite{ref5}:
 \begin{equation}
     \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
 \end{equation}
 
 \subsubsection{Feed-Forward Block}
-Each encoder and decoder layer contains a position-wise Feed-Forward Network (FFN). This consists of two linear transformations with a ReLU activation function in between: \cite{ref5}
+Each encoder and decoder layer contains a position-wise Feed-Forward Network (FFN). This consists of two linear transformations with a ReLU activation function in between \cite{ref5}:
 \begin{equation}
     FFN(x) = \text{ReLU}(xW_1 + b_1)W_2 + b_2
 \end{equation}
@@ -761,7 +786,7 @@ This implementation of the Transformer replaces the vocabulary projection layers
 The implemented model is a standard Sequence-To-Sequence model with modifications clarified in \ref{chap:workarounds}.
 
 \subsubsection{Continuous Input Encoder}
-The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly.  \cite{ref4, ref8}
+The \texttt{EncoderRNN} processes the input sequence to generate a latent representation of the problem state. Unlike standard NLP encoders that require an embedding layer to project discrete tokens, this module accepts raw feature vectors directly  \cite{ref4, ref8}.
 
 \subsubsection{Attention Mechanism}
 To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
@@ -786,12 +811,12 @@ This structure ensures that both the recurrent processing and the final predicti
 \subsection{The Pointer Network Model}
 \label{sec:pointer}
 
-The proposed solution implements a Pointer Network architecture adapted from Vinyals et al. (2015). \cite{ref7} The model follows an Encoder/Decoder paradigm enhanced with an attention mechanism, specifically designed to handle variable-length input sequences and output a permutation of the input indices.
+The proposed solution implements a Pointer Network architecture adapted from Vinyals et al. (2015) \cite{ref7}. The model follows an Encoder/Decoder paradigm enhanced with an attention mechanism, specifically designed to handle variable-length input sequences and output a permutation of the input indices.
 
 \subsubsection{Encoder Mechanism}
 The encoder processes the input sequence to generate a latent representation of the problem state.
 \begin{enumerate}
-    \item \textbf{Input Projection:} Raw input features are first passed through a \texttt{Projector} block. This module consists of a Linear Transformation, an Tanh Activation, and Layer Normalization. \cite{ref1}
+    \item \textbf{Input Projection:} Raw input features are first passed through a \texttt{Projector} block. This module consists of a Linear Transformation, an Tanh Activation, and Layer Normalization \cite{ref1}.
     \item \textbf{Bidirectional LSTM:} The projected features are fed into a bidirectional LSTM. This allows the model to capture context from both past and future states in the sequence. 
 \end{enumerate}
 
@@ -812,7 +837,7 @@ The decoder generates the output permutation one index at a time. Unlike standar
     This refined query $u_t$ is then used to compute the final attention scores (logits) over the input elements. The index with the highest probability is selected as the next element in the permutation.
 \end{itemize}
 
-\subsubsection{Masking and Inference} %FIXME
+\subsubsection{Masking and Inference} 
 To ensure the validity of the resulting permutation (i.e., the Traveling Salesman constraint that every city is visited exactly once), a masking mechanism is applied during inference. 
 
 Once an input index $k$ is selected, it is masked out by setting its log-probability to $-\infty$ ($1e^{-9}$) for all subsequent steps. This hard constraint prevents the model from selecting the same element twice. Furthermore, the model is auto-regressive: the feature vector of the selected element $h_k$ is used as the input to the decoder for the next time step $t+1$.
@@ -822,18 +847,18 @@ Once an input index $k$ is selected, it is masked out by setting its log-probabi
 To train the models, a custom PyTorch Dataset was implemented to handle combinatorial data. This pipeline is responsible for converting raw input jsons into tensors. The dataset structure is identical for all models.
 
 \subsection{Data Processing}
-The dataset is initialized with raw JSON files containing sequences of station data. The pipeline flattens these structures into a stack of tensors, where each tensor represents a single task sequence with the shape:
+The dataset is initialized with raw JSON files containing sequences of station data. The pipeline flattens these structures into a $M \times N$ stack of tensors, where each tensor represents a single task sequence with the shape:
 
 \begin{equation}
     X = \begin{bmatrix}
     x_{1,1} & x_{1,2} & \dots & x_{1,N} \\
     x_{2,1} & x_{2,2} & \dots & x_{2,N} \\
     \vdots & \vdots & \ddots & \vdots \\
-    x_{M,1} & x_{M,2} & \dots & x_{L,N}
+    x_{M,1} & x_{M,2} & \dots & x_{M,N}
     \end{bmatrix}
 \end{equation}
 
-Where $N$ is the number of stations and $M$ is the the number of objects. 
+Where $M$ is the the number of objects and $N$ is the number of stations. 
 
 The feature extraction is performed by selecting specific keys ($s_1 \dots s_N$) from the raw data objects. To ensure numerical stability and faster converges the data is then normalized using: 
 \begin{equation}
@@ -861,26 +886,26 @@ Model parameters are optimized using the \textbf{AdamW} algorithm \cite{ref15}. 
 The model is trained to minimize the \textbf{Cross-Entropy Loss} between the output logits and the target sequence. A masking constraint (\texttt{ignore\_index=-1}) is applied to handle variable sequence lengths within batches. This effectively isolates the padding tokens from the objective function, ensuring the optimization focuses solely on valid data elements rather than padding.
 
 \subsection{Regularization and Stabilization}
-Training deep neural networks, particularly those involving recurrence (RNNs), can be unstable due to the exploding gradient problem. \cite{ref17} To mitigate this, Gradient Clipping is applied to the model parameters. This acts as a safety mechanism that caps the maximum possible step size during backpropagation. By preventing drastic weight updates, it ensures that outliers in the training data or instabilities in the recurrent layers do not cause the optimization process to diverge.
+Training deep neural networks, particularly those involving recurrence (RNNs), can be unstable due to the exploding gradient problem \cite{ref17}. To mitigate this, Gradient Clipping is applied to the model parameters. This acts as a safety mechanism that caps the maximum possible step size during backpropagation. By preventing drastic weight updates, it ensures that outliers in the training data or instabilities in the recurrent layers do not cause the optimization process to diverge.
 
 \subsection{Transformer Specifics: Masking strategy}
 Unlike the recurrent models, which process data sequentially by definition, the Transformer processes the entire sequence in parallel. To replicate the sequential nature of the problem and prevent information leakage, a dual-masking strategy is implemented within the training loop via the \texttt{make\_masks} function:
 
 \begin{enumerate}
     \item \textbf{Padding Mask (Source):} This mask identifies padding tokens in the input batch. It forces the self-attention mechanism to assign zero attention weights to these positions, ensuring the model focuses only on valid tasks.
-    \item \textbf{Look-Ahead Mask (Target):} To preserve the auto-regressive property, a triangular "no-peak" mask is applied to the decoder. This ensures that when generating the prediction for position $t$, the model can only attend to positions $0$ through $t-1$, effectively hiding future ground-truth tokens.
+    \item \textbf{Look-Ahead Mask (Target):} To preserve the auto-regressive property, a triangular "no-peek" mask is applied to the decoder. This ensures that when generating the prediction for position $t$, the model can only attend to positions $0$ through $t-1$, effectively hiding future ground-truth tokens.
 \end{enumerate}
 
 \subsection{Teacher Forcing}
 \label{sec:teacher_forcing}
 
-The method of training used in this thesis is referred to as "Teacher Forcing". The model is trained by supplying the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than feeding back the model's own generated prediction. This stabilizes training and enables faster convergence, especially in RNN-based models. \cite{ref2, ref21}
+The method of training used in this thesis is referred to as "Teacher Forcing". The model is trained by supplying the ground-truth tokens from the previous time step ($t-1$) as input to predict the current time step ($t$), rather than feeding back the model's own generated prediction. This stabilizes training and enables faster convergence, especially in RNN-based models \cite{ref2, ref21}.
 
 We apply this strategy across all three architectures, though the implementation differs due to the nature of the models:
 
 \begin{enumerate}
-    \item \textbf{Recurrent Models (Seq2Seq \& Pointer Network):} For the RNN-based architectures, Teacher Forcing is applied sequentially. During the forward pass, the decoder receives the ground-truth token $y_{t-1}$ explicitly at each time step to compute the hidden state and output for time $t$. \cite{ref2}
-    \item \textbf{Transformer:} As the Transformer processes sequences in parallel, Teacher Forcing is implemented implicitly via the \textbf{Look-Ahead Mask} described previously. By masking future positions, the self-attention mechanism at position $t$ is restricted to attending only to the ground-truth sequence indices $[0, t-1]$, effectively replicating the Teacher Forcing behaviour without a recurrent loop. \cite{ref22} \cite{ref5}
+    \item \textbf{Recurrent Models (Seq2Seq \& Pointer Network):} For the RNN-based architectures, Teacher Forcing is applied sequentially. During the forward pass, the decoder receives the ground-truth token $y_{t-1}$ explicitly at each time step to compute the hidden state and output for time $t$ \cite{ref2}.
+    \item \textbf{Transformer:} As the Transformer processes sequences in parallel, Teacher Forcing is implemented implicitly via the \textbf{Look-Ahead Mask} described previously. By masking future positions, the self-attention mechanism at position $t$ is restricted to attending only to the ground-truth sequence indices $[0, t-1]$, effectively replicating the Teacher Forcing behaviour without a recurrent loop \cite{ref22, ref5}.
 \end{enumerate}
 
 
@@ -903,18 +928,25 @@ This POST endpoint will count the number of \textbf{overlaps} on a given sequenc
 
 % INSERT?
 
-\chapter{Experiments and results}
+\chapter{Experiments and Results}
+
 \section{Task Performance}
-Performance is measured by how well the model can take an input with overlapping data and rearrange the tasks to minimize overloads. The reduction metric is defined at \ref{sec:eval}.
+Performance is measured by how well the model can take an input with overlapping data and rearrange the tasks to minimize overloads. Although the operational constraints of the target problem typically limit sequences to batches of roughly 100 objects, the following results also evaluate the model's scalability beyond this range.
 
-Although the operational constraints of the target problem typically limit sequences to batches of roughly 100 objects, the following results also evaluate the model's scalability beyond this range.
-
-The values in the tables below are based on the ratio found at \ref{sec:eval} $\frac{O_P}{O_S}$, where $O_S$ is the number of overlaps found in a freshly generated shuffled dataset, and $O_P$ is the number of overlaps found after predicting and processing the items in said dataset. With the improvement rate being defined as 
+\subsection{Evaluation Metrics}
+\label{sec:eval}
+To objectively measure the performance of the model in overlap reduction (\ref{chap:overlap}), we monitor results using a performance ratio:
 \begin{equation}
-    Improvement = ( 1 - \frac{O_P}{O_S} ) \times 100 \%
+    \text{ratio} = \frac{O_{predicted}}{O_{source}}
+\end{equation}
+where $O_{source}$ is the total number of overlaps of the shuffled input sequence, and $O_{predicted}$ is the total number of overlaps of the predicted sequence. The closer the ratio is to $0$, the better the model performs. A value above $1$ indicates the model is yielding worse results than the initial shuffled state. 
+
+The Improvement rate ($I$) used in the tables is defined as:
+\begin{equation}
+    \text{Improvement} = ( 1 - \frac{O_{predicted}}{O_{source}} ) \times 100 \%
 \end{equation}
 
-The testing data has an optimal solution before getting shuffled where $O_P = 0$. The data is generated using a random number generator, using no seed, to ensure variability across test runs.
+The testing data is generated using a random number generator with no seed to ensure variability across test runs. The values in the following tables are based on these metrics. Note that the data has an optimal solution before shuffling where $O_{predicted} = 0$, as per the data generation algorithm in \ref{sub:datagen}. 
 
 \subsection{Pointer Network Performance}
 
@@ -928,7 +960,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_10}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $14/72$ & $80.56\%$ \\
             Run \#2 & $15/68$ & $77.94\%$ \\
@@ -945,7 +977,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $188/713$ & $73.63\%$ \\
             Run \#2 & $183/741$ & $75.30\%$ \\
@@ -964,7 +996,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100b}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $2008/7208$ & $72.14\%$ \\
             Run \#2 & $2013/7234$ & $72.17\%$ \\
@@ -981,7 +1013,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100c}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $20329/72702$ & $72.04\%$ \\
             Run \#2 & $20001/72463$ & $72.40\%$ \\
@@ -1006,7 +1038,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_10}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $7/80$ & $91.25\%$ \\
             Run \#2 & $4/58$ & $93.10\%$ \\
@@ -1023,7 +1055,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $73/721$ & $89.88\%$ \\
             Run \#2 & $76/734$ & $89.85\%$ \\
@@ -1042,7 +1074,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100b}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $693/7276$ & $90.48\%$ \\
             Run \#2 & $686/7137$ & $90.39\%$ \\
@@ -1059,7 +1091,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100c}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $5259/72219$ & $92.72\%$ \\
             Run \#2 & $5553/72584$ & $92.36\%$ \\
@@ -1084,7 +1116,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_10}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $23/78$ & $70.51\%$ \\
             Run \#2 & $16/71$ & $77.46\%$ \\
@@ -1101,7 +1133,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $200/708$ & $71.75\%$ \\
             Run \#2 & $190/760$ & $75.00\%$ \\
@@ -1120,7 +1152,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100b}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $2098/7171$ & $70.74\%$ \\
             Run \#2 & $1987/7236$ & $72.54\%$ \\
@@ -1137,7 +1169,7 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
         \label{tab:res_100c}
         \begin{tabular}{l c c}
             \toprule
-            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Red.} \\
+            \textbf{Run} & \textbf{Ratio ($R$)} & \textbf{Improvement ($I$)} \\
             \midrule
             Run \#1 & $20495/72675$ & $71.80\%$ \\
             Run \#2 & $20542/72830$ & $71.79\%$ \\
@@ -1152,38 +1184,40 @@ The testing data has an optimal solution before getting shuffled where $O_P = 0$
 
 \section{Production Dataset}
 \label{sec:dataset}
-We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better. How the data was generated is further discussed in \ref{sub:datagen}
+We obtained an official dataset from a production run. However, the raw data contained several inconsistencies that required resolution before it could be used for training. Hence a script for generated dummy dataset based on the original was made for simulating this task, where borrowing and tighter fits are more commonplace than actual production data. (At least from what we saw from it) In theory this would be beneficial as the model is then trained on "harder" sequences, thus sequences with more room for error and wider margins should perform better. How the data was generated is further discussed in \ref{sub:datagen}.
 
-
-\section{Evaluation Metrics}
-\label{sec:eval}
-To objectively measure the performance of the model, we monitor performance of the models in overlap reduction (\ref{chap:overlap}) using a simple ratio.
-\begin{equation}
-    \text{ratio} = \frac{O_{predicted}}{O_{source}}
-\end{equation}
-where $O_{source}$ is the total number of overlaps of the shuffled input sequence, and $O_{predicted}$ is the total number of overlaps of the predicted sequence. The closer to $0$ it gets, the better it performs, and if it goes above $1$ the model is yielding worse results than before.
 
 \chapter{Discussion}
 \section{Interpretation of Results}
 \label{sub:int}
 
-The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an overload reduction of 93\% at most on unseen test data, with an average of about 90\%.
+The evaluated models demonstrated strong overall performance, with the Transformer architecture notably exceeding initial projections. The Transformer achieved an Improvement (\ref{sec:eval}) of 93\% at most on unseen test data, with an average of about 90\%.
 
-While this result indicates strong generalization to new sequences, the exceptionally high performance warrants scepticism regarding the nature of the synthetic dataset. Since the data is generated via a constructive "solved puzzle" algorithm (\ref{sub:datagen}), the resulting tasks contain inherent "fingerprints" of the generation logic, specifically the deterministic \textit{Gap} and \textit{Centering} calculations, these perfections will not be present in real-life data.
+While this result indicates strong generalization to new sequences, the exceptionally high performance warrants scepticism regarding the nature of the synthetic dataset. Since the data is generated via a constructive "solved puzzle" algorithm (\ref{sub:datagen}), the resulting tasks contain inherent "fingerprints" of the generation logic. These fingerprints consist of the deterministic \textit{Gap} and the relativistic \textit{size} calculations, which are perfections that will not be present in real-life data.
 
-Even though the input sequences are freshly generated and then shuffled during testing, the relationships between compatible tasks remain encoded in their feature vectors. It is highly probable that the Transformer, utilizing its global self-attention mechanism, has successfully "reverse-engineered" these generative artifacts. Rather than learning abstract scheduling principles, the model has likely learned to identify the specific "jigsaw" edges created by the constructive algorithm, allowing it to reconstruct the original ground truth with high fidelity.
+Furthermore, even though the input sequences are freshly generated and then shuffled during testing, the relationships between compatible tasks remain encoded in their feature vectors. It is highly probable that the Transformer, utilizing its global self-attention mechanism, has successfully "reverse-engineered" these generative artifacts. Rather than learning abstract scheduling principles, the model has likely learned to identify the specific "jigsaw" edges created by the constructive algorithm. This allows it to reconstruct the original ground truth with high fidelity. The problem thus lies in overfitting, but not in the traditional sense of $\text{Input data} \subset \text{Training Data}$.
 
-This hypothesis is supported by the performance gap between the Transformer (93\%), and the RNN-Based (Seq2Seq \& Pointer Network) models (~75\%). The Transformer can inspect the entire shuffled "pool" of tasks simultaneously to find optimal pairings, whereas the RNNs must attempt to reconstruct the puzzle linearly \cite{ref17}, making it harder to spot these global, puzzle piece connections. %fishy'
+Adding to this, the use of Cross-Entropy Loss combined with Teacher Forcing, (which was implemented in the Transforming using a no-peek mask \ref{sec:training}) may have influenced these results. While these methods are used to speed up the training process and mimic the correct order of the input data, they can cause the Transformer to become over-optimized. Thus the model may only perform well on generated data that uses the \textit{exact same} parameters as the training set. 
+
+This hypothesis is further supported by the performance gap between the Transformer (90\%) and the RNN-Based (Seq2Seq and Pointer Network) models (approximately 75\%). During runtime the Transformer can inspect the entire shuffled pool of tasks simultaneously to find optimal pairings while the RNNs must attempt to reconstruct the puzzle linearly, which makes it harder to spot these global, puzzle piece connections. 
+
 
 \section{Limitations}
 \subsection{Testing and Training Data}
 Due to the limited size and inconsistency of available production data, this study relies on generated synthetic data (\ref{sec:dataset}). Although this dataset was designed to adhere to operational constraints, the absence of real-world validation, and edge-cases not accounted for within sequencing, limits our ability to confirm with full certainty that the models' performance in a live production environment will produce feasible results at all.
+
 
 \subsection{Hardware and Resource Limitations}
 \label{sub:limit}
 The training process was strictly bound by the available VRAM. The Transformer architecture, which has a quadratic memory complexity relative to sequence length, frequently triggered \textit{CUDA out of memory} errors during experimentation. 
 
 To maintain training stability, it was necessary to reduce the batch size. However, small batch sizes introduce gradient noise, making it computationally infeasible to converge effectively on a massive dataset (millions of samples). Consequently, the training dataset was capped at $500,000$ samples to balance memory constraints with training duration. Future work utilizing hardware with higher VRAM capacities would allow for larger batch sizes, enabling the model to learn from the millions of examples required for optimal generalization.
+
+\subsection{Improvement Metrics}
+\label{sub:imp}
+The binary focus on solely reducing the quantity of overlaps, without measuring their duration, is missing the forest for the trees. Although the primary objective is to minimize station overloads, a purely count-based metric fails to capture improvements in overall cycle time and station utilization. For instance, one sequence might result in 10 overlaps producing a total downtime of 400 cmin, whereas another sequence with 30 overlaps might only incur 100 cmin of total downtime. 
+
+Furthermore, it is usually not ideal to rely solely on other stations to finish in time, an additional metric for measuring "drift usage" could have been implemented as to not systematically overwork the human operators along the assembly-line.
 
 \section{Future Work}
 
