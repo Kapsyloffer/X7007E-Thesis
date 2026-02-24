@@ -1,4 +1,4 @@
-\documentclass[12pt,a4paper]{report}
+\documentclass[12pt,a4paper,twoside]{report}
 
 % Packages
 \usepackage[utf8]{inputenc}
@@ -12,6 +12,7 @@
 \usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{float}
+\usepackage{fancyhdr}
 
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, calc, positioning, patterns, fadings}
@@ -26,20 +27,42 @@
 \onehalfspacing
 \geometry{margin=1in}
 
-\titleformat{\chapter}[hang]
-  {\normalfont\huge\bfseries}
-  {\thechapter.}
-  {1em}
-  {}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE]{\textsc{\leftmark}}
+\fancyhead[LO]{\textsc{\rightmark}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection.\ #1}}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \renewcommand{\headrulewidth}{0pt}
+}
+
+\titleformat{\chapter}[display]
+  {\normalfont\raggedleft}
+  {\huge\textsc{\chaptertitlename}\ \thechapter}
+  {1ex}
+  {\titlerule\vspace{1ex}\Huge}
+
+\makeatletter
+\renewenvironment{abstract}{
+    \thispagestyle{empty}
+    \begin{flushright}
+        \huge\textsc{\abstractname}
+    \end{flushright}
+    \vspace{-0.5cm}
+    \noindent\rule{\textwidth}{0.4pt}
+    \vspace{1cm}
+}{}
+\makeatother
 
 \begin{document}
-
-\title{Product Sequencing on a Mixed-Model Assembly Line using Deep Learning}
-\author{Christoffer Lindkvist}
-\date{\today}
-\maketitle
-
 \begin{abstract}
+
+
 A Mixed-Model Assembly Line (MMAL) manufactures different product variants on a single line, where variations in tasks can cause imbalances across workstations. When several labour-intensive models appear consecutively, stations may exceed their capacity, leading to overloads that require halting the entire line. This challenge is formalized as the Product Sequencing Problem, an NP-hard optimization task traditionally managed by rule-based heuristics or human intuition.
 
 This thesis investigates the viability of Deep Learning for solving this problem by emulating valid scheduling logic. We adapt and compare three Neural Network architectures: the \textbf{Sequence-to-Sequence (Seq2Seq)} model and the \textbf{Transformer} (originally derived from Natural Language Processing), alongside the \textbf{Pointer Network} (designed for combinatorial optimization). To overcome the limitations of inconsistent historical records, the models are trained on high-fidelity synthetic data generated via a constructive "solved puzzle" algorithm, which serves as a collision-free ground truth.
@@ -94,7 +117,7 @@ EU funding).
 \chapter{Introduction}
 \section{Background}
 This thesis addresses machine learning applied to the Product Sequencing Problem, an NP-Hard optimization problem which arises in the planning of mixed-model assembly lines \cite{ref6}. 
-A mixed-model assembly line is designed to produce various models or variants of a product on the same continuous line without setup changes between models. The core of the problem lies in the fact that different items on the assembly line may take different amounts of processing time to be completed at a given station. Thus, scheduling conflicts and work overloads may arise from two or more demanding objects being consecutively sequenced.
+A mixed-model assembly line is designed to produce various models or variants of a product on the same continuous line without setup changes between models. The core of the problem lies in the fact that different tasks on the assembly line may take different amounts of processing time to be completed at a given station. Thus, scheduling conflicts and work overloads may arise from two or more demanding objects being consecutively sequenced.
 
 Traditionally, product sequences are determined manually by management staff using a rule-based framework. However, if a sequence needs to be adjusted, the process relies primarily on tacit knowledge accumulated through experience. While this often produces feasible solutions with relatively few scheduling conflicts, it remains ad hoc and sporadic. The methods used in assembly today are based on human intuition and rules that have accumulated over the years. These subtleties can prove highly restrictive in search of better solutions, and hard to teach new operators.
 
@@ -103,7 +126,6 @@ The main constraint for this problem is that the assembly line moves synchronous
 \section{Research Problem}
 Current approaches in practice often rely on human expertise and tacit knowledge, which limits scalability and consistency. If this knowledge could be systematically emulated using a model that mimics historical sequencing data, and in effect tacit knowledge, it may provide stronger starting points for any given adjustments to be made later on. Consequently, switching from a strictly rules-based to a more time-based approach could help reduce the number of overloads (\ref{chap:overlap}), and conflicts.
 
-\clearpage 
 \section{Objectives}
 \label{sec:objectives}
 
@@ -120,13 +142,13 @@ The primary objectives of this thesis are:
 
 \section{Visualization of the Problem}
 
-This visualization describes the flow of the assembly line along two axes: stations ($S_n$) and clock-cycles ($T$). A clock-cycle is defined as the logical step in which the assembly line advances, representing the time required for an item to move from one station to the next (referred to as \textbf{Takt}, see \ref{tab:genconsts}). In the visualization, items are stretched along the timeline to reflect their processing duration relative to this fixed window. Although the clock-cycle represents a specific unit of time in the model ($700$ Cmin), the visualization treats it as a relative step to illustrate sequencing logic.
+This visualization describes the flow of the assembly line along two axes: stations ($S_n$) and clock-cycles ($T$). A clock-cycle is defined as the logical step in which the assembly line advances, representing the time required for a task to move from one station to the next (referred to as \textbf{Takt}, see \ref{tab:genconsts}). In the visualization, the tasks are stretched along the timeline to reflect their processing duration relative to this fixed window. Although the clock-cycle represents a specific unit of time in the model ($700$ Cmin), the visualization treats it as a relative step to illustrate sequencing logic.
 
-Each allocation on the timeline may extend beyond its standard cycle by borrowing time from a previous or upcoming station. This borrowable buffer is referred to as the \textit{"drift area"} (\ref{chap:drift}). A drift area serves as a transitional zone between $S_n$ and $S_{n+1}$. While both stations have permission to borrow time within this space, the physical constraint is that only one station may utilize the drift area at any single moment. This flexibility is crucial for fitting labour-intensive items onto the line without halting production. However, this shared resource is also the primary source of our scheduling conflicts.
+Each allocation on the timeline may extend beyond its standard cycle by borrowing time from a previous or upcoming station. This borrowable buffer is referred to as the \textit{"drift area"} (\ref{chap:drift}). A drift area serves as a transitional zone between $S_n$ and $S_{n+1}$. While both stations have permission to borrow time within this space, the physical constraint is that only one station may utilize the drift area at any single moment. This flexibility is crucial for fitting labour-intensive tasks onto the line without halting production. However, this shared resource is also the primary source of our scheduling conflicts.
 
-As illustrated in \autoref{fig:assembly}, item $D$ requires additional processing time on station $S_4$, $T+2$ and is forced to utilize the drift area from both $S_3$ and $S_5$. While this single allocation is valid, a conflict arises at $T+2$ because the subsequent item, $E$, also requires the use of the shared drift area between $S_4$ and $S_5$. Since the space cannot be occupied by both simultaneously, this causes an overload that necessitates a line halt. Visualized as an overlap.
+As illustrated in \autoref{fig:assembly}, task $D$ requires additional processing time on station $S_4$, $T+2$ and is forced to utilize the drift area from both $S_3$ and $S_5$. While this single allocation is valid, a conflict arises at $T+2$ because the subsequent task, $E$, also requires the use of the shared drift area between $S_4$ and $S_5$. Since the space cannot be occupied by both simultaneously, this causes an overload that necessitates a line halt. Visualized as an overlap.
 
-A similar conflict appears at $T$ with items $F$ and $G$. Both items require borrowing time from the preceding and succeeding stations. Because the available drift capacity is insufficient to accommodate the combined duration of both tasks, they create an overlap where the items \textit{cannot} fit.
+A similar conflict appears at $T$ with the tasks $F$ and $G$. Both tasks require borrowing time from the preceding and succeeding stations. Because the available drift capacity is insufficient to accommodate the combined duration of both tasks, they create an overlap where the tasks \textit{cannot} fit.
 
 
 \begin{figure}[ht]
@@ -333,11 +355,11 @@ It is also important to note that while an object $T_n$ is borrowing from $S_{n+
 \section{Defining Overlaps}
 \label{chap:overlap}
 
-Overlaps stem from timing dependencies: each item’s "size" on a station $S_n$ depends on how long it takes for the item to process at the station. In other words, the "size" of the task is the duration of the task relative the duration of the station. If a task exceeds \textbf{Takt} in duration, then the use of the drift area is mandatory. 
+Overlaps stem from timing dependencies: each task's "size" on a station $S_n$ depends on how long it takes for the task to process at the station. In other words, the "size" of the task is the duration of the task relative the duration of the station. If a task exceeds \textbf{Takt} in duration, then the use of the drift area is mandatory. 
 
-However, if two items are processed consecutively at station $S_n$, and both of those items exceed \textbf{Takt} in $S_n$ to the point of requiring the usage of both of its neighbouring stations ($S_{n-1}$ and $S_{n+1}$), then there \textit{will} not be sufficient time for all operations to complete if both of those objects need to borrow time. These conflicting dependencies result in what's visualized as (and defined in this thesis as) an overlap, there simply isn't enough time for assembly to finish in time.
+However, if two tasks are processed consecutively at station $S_n$, and both of those tasks exceed \textbf{Takt} in $S_n$ to the point of requiring the usage of both of its neighbouring stations ($S_{n-1}$ and $S_{n+1}$), then there \textit{will} not be sufficient time for all operations to complete if both of those objects need to borrow time. These conflicting dependencies result in what's visualized as (and defined in this thesis as) an overlap, there simply isn't enough time for assembly to finish in time.
 
-In practice the items do not literally stack or collide. Rather, the assembly line must halt in order to allow the operation to complete before the assembly line may continue again. 
+In practice the objects do not literally stack or collide. Rather, the assembly line must halt in order to allow the tasks to complete before the assembly line may continue again. 
 
 Overlaps are how station overloads are visualized in this thesis, as we follow the constraint that no matter what, an allocation can never exceed $Takt + 2 * Drift$ in size, and an allocation can never go past the right-most limit of the drift area on the coming station.
 
@@ -427,7 +449,7 @@ However, applying standard Seq2Seq models to permutation problems presents a spe
 
 \subsection{Limitations of Recurrent Architectures}
 
-Despite their historical success, RNN and LSTM-based models suffer from a significant bottleneck: \textbf{sequential processing}. Because these models must process the input step-by-step (item $t$ depends on item $t-1$), they cannot run in parallel. This results in slower training times and, more importantly, a limited ability to capture the global context of the entire schedule at once \cite{ref4}.
+Despite their historical success, RNN and LSTM-based models suffer from a significant bottleneck: \textbf{sequential processing}. Because these models must process the input step-by-step (task $t$ depends on task $t-1$), they cannot run in parallel. This results in slower training times and, more importantly, a limited ability to capture the global context of the entire schedule at once \cite{ref4}.
 
 This limitation motivates the shift toward \textbf{Attention-based approaches}, which process the entire sequence simultaneously. The concept of attention was initially introduced to align inputs and outputs in RNNs \cite{ref16}, but later evolved into standalone architectures.
 
@@ -441,7 +463,7 @@ To address the sequential bottlenecks of RNNs, Transformer-based architectures r
 
 The defining characteristic of the Transformer is the use of scaled dot-product attention, also known as Multi-Head Attention. This allows the model to weigh the importance of each element in a sequence relative to all other elements, regardless of distance \cite{ref14}. This parallel computation not only speeds up training but enables the model to capture global dependencies more effectively than RNN-based methods. Since Transformers do not inherently know the order of input, positional encodings are added to the input vectors to retain sequence information \cite{ref5, ref12}.
 
-For combinatorial scheduling problems, this means the model can see complex interactions across the entire day's plan \cite{ref13}. The placement of one item can be directly influenced by all others in the sequence, providing the context awareness necessary for effective scheduling \cite{ref8}. 
+For combinatorial scheduling problems, this means the model can see complex interactions across the entire day's plan \cite{ref13}. The placement of one task can be directly influenced by all others in the sequence, providing the context awareness necessary for effective scheduling \cite{ref8}. 
 
 \subsection{Pointer Networks}
 \label{subsec:pointer_nets}
@@ -480,7 +502,7 @@ For data generation the following constants are used:
 For the purpose of training optimization, the raw information is abstracted into a concise JSON schema. Each entry in the dataset is reduced to the following three attributes:
 
 \begin{itemize}
-    \item \textbf{Object ID} (\texttt{object}): An integer representing the unique identifier of the item.
+    \item \textbf{Object ID} (\texttt{object}): An integer representing the unique identifier of the task.
     \item \textbf{Station Data} (\texttt{data}): A mapping of station keys ($s_1, \dots, s_{39}$) to their respective time requirement values.
     \item \textbf{Station Offsets} (\texttt{offsets}): A mapping of station keys ($s_1, \dots, s_{39}$) to their relative offset values.
 \end{itemize}
@@ -791,7 +813,7 @@ The \texttt{EncoderRNN} processes the input sequence to generate a latent repres
 \subsubsection{Attention Mechanism}
 To overcome the bottleneck of compressing the entire sequence into a single fixed-length vector, the model employs an Attention mechanism, referred to as Bahdanau Attention \cite{ref16}. This approach allows the decoder to "search" the entire input sequence and dynamically focus only on the information relevant to the current step.
 
-Rather than relying on a static summary of the input, the mechanism calculates a dynamic "relevance score" for every item in the input sequence. These scores effectively function as a spotlight, determining how much focus the model should place on each specific input element when generating the next part of the output.
+Rather than relying on a static summary of the input, the mechanism calculates a dynamic "relevance score" for every task in the input sequence. These scores effectively function as a spotlight, determining how much focus the model should place on each specific input element when generating the next part of the output.
 
 These scores are normalized into probabilities that sum to 100\%. Finally, the model computes a time dependent Context Vector ($c_t$), which is a weighted average of the inputs \cite{ref16}:
 \begin{equation}
